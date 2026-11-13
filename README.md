@@ -34,6 +34,7 @@ Liste complète et schéma de câblage : [`hardware/WIRING.md`](hardware/WIRING.
 |---|---|---|
 | [`TUTORIEL.md`](TUTORIEL.md) | tutoriel pas à pas, sourcé, de l'ouverture du robot à la carte | rédigé, à compléter avec les vraies photos |
 | [`docs/ETAT_AVANCEMENT.md`](docs/ETAT_AVANCEMENT.md) | où en est le projet, risques, prochaines étapes | à jour au 13/11/2026 |
+| [`docs/PHOTOS.md`](docs/PHOTOS.md) | photos du démontage de Dimitri et du port série | 14 photos |
 | `firmware/` | config ESPHome (`roomba.yaml`) et composant C++ `roomba_oi` (flux de capteurs, pose, pilotage) | écrit, **non compilé** |
 | `ha/` | package Home Assistant, tableau de bord, carte joystick | écrit, **non testé** |
 | `mapper/` | grille d'occupation, rendu PNG, app AppDaemon, simulateur | cœur testé en simulation, app AppDaemon non testée |
