@@ -1,0 +1,21 @@
+# Secrets : ne jamais publier
+firmware/secrets.yaml
+secrets.yaml
+.env
+
+# ESPHome / PlatformIO
+.esphome/
+.pio/
+firmware/.esphome/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Éditeurs / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

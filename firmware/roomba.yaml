@@ -1,0 +1,356 @@
+# Aerobot ESP - firmware ESPHome pour Roomba 696 (serie 600)
+# Carte : ESP32-C3 SuperMini. Necessite ESPHome >= 2025.8 (syntaxe "api: actions:").
+#
+# Cablage (voir hardware/WIRING.md) :
+#   Roomba pin 4 (TXD, 5 V) -> diviseur -> GPIO7 (RX ESP)
+#   Roomba pin 3 (RXD)      <- GPIO6 (TX ESP)
+#   Roomba pin 5 (BRC)      <- collecteur NPN, base <- 1k <- GPIO10
+#   MPU6050 : SDA GPIO4, SCL GPIO3, 3V3, GND
+
+substitutions:
+  name: aerobot
+  friendly_name: Aerobot
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          // calibration odometrie : (echelle distance, entraxe en mm). Voir README, etape de calibration.
+          id(roomba).set_calibration(1.0f, 235.0f);
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: esp32c3
+  framework:
+    type: esp-idf
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_key
+  actions:
+    # Pilotage direct (mm/s, -500..500, borne par "Vitesse max manuelle")
+    - action: drive
+      variables:
+        left: int
+        right: int
+      then:
+        - lambda: 'id(roomba).drive(left, right);'
+    # Pilotage manette : forward et turn entre -1 et 1 (turn > 0 = gauche)
+    - action: drive_xy
+      variables:
+        forward: float
+        turn: float
+      then:
+        - lambda: 'id(roomba).drive_xy(forward, turn);'
+    - action: manual_mode
+      variables:
+        enable: bool
+      then:
+        - lambda: 'id(roomba).manual_mode(enable);'
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none        # latence minimale pour la manette
+  ap:
+    ssid: "Aerobot Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+uart:
+  id: roomba_uart
+  tx_pin: GPIO6
+  rx_pin: GPIO7
+  baud_rate: 115200
+  rx_buffer_size: 1024
+
+roomba_oi:
+  id: roomba
+  uart_id: roomba_uart
+  brc_pin: GPIO10
+  wall_snap: true
+
+i2c:
+  sda: GPIO4
+  scl: GPIO3
+  frequency: 400kHz
+
+sensor:
+  # --- gyroscope (cap) ---
+  - platform: mpu6050
+    address: 0x68
+    update_interval: 20ms
+    gyro_z:
+      name: "Gyro Z"
+      internal: true
+      on_value:
+        then:
+          - lambda: 'id(roomba).set_gyro_z(x);'
+    # Si le robot tourne a gauche et que le cap diminue, mettre set_gyro_scale(-1.0f) dans on_boot.
+
+  # --- batterie ---
+  - platform: template
+    name: "Batterie"
+    unit_of_measurement: "%"
+    device_class: battery
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: 'return id(roomba).get_battery_pct();'
+  - platform: template
+    name: "Tension batterie"
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 2
+    update_interval: 10s
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_voltage();'
+  - platform: template
+    name: "Courant batterie"
+    unit_of_measurement: "mA"
+    device_class: current
+    accuracy_decimals: 0
+    update_interval: 5s
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_current();'
+  - platform: template
+    name: "Temperature batterie"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 0
+    update_interval: 60s
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_temperature();'
+  - platform: template
+    name: "Distance parcourue"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    state_class: total_increasing
+    update_interval: 30s
+    lambda: 'return id(roomba).get_distance_m();'
+
+  # --- pose pour le mapper (mm / degres) ---
+  - platform: template
+    name: "Pose X"
+    id: pose_x
+    unit_of_measurement: "mm"
+    accuracy_decimals: 0
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_x();'
+  - platform: template
+    name: "Pose Y"
+    id: pose_y
+    unit_of_measurement: "mm"
+    accuracy_decimals: 0
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_y();'
+  - platform: template
+    name: "Pose theta"
+    id: pose_theta
+    unit_of_measurement: "°"
+    accuracy_decimals: 1
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_theta_deg();'
+  # instantane de la derniere collision (pose au moment du contact)
+  - platform: template
+    name: "Collision compteur"
+    id: bump_count
+    accuracy_decimals: 0
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return (float) id(roomba).get_bump_count();'
+  - platform: template
+    name: "Collision X"
+    id: bump_x
+    unit_of_measurement: "mm"
+    accuracy_decimals: 0
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_bump_x();'
+  - platform: template
+    name: "Collision Y"
+    id: bump_y
+    unit_of_measurement: "mm"
+    accuracy_decimals: 0
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_bump_y();'
+  - platform: template
+    name: "Collision theta"
+    id: bump_theta
+    unit_of_measurement: "°"
+    accuracy_decimals: 1
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_bump_theta_deg();'
+  - platform: template
+    name: "Collision cote"
+    id: bump_side
+    accuracy_decimals: 0
+    update_interval: 200ms
+    entity_category: diagnostic
+    lambda: 'return (float) id(roomba).get_bump_side();'
+  - platform: template
+    name: "Recalages mur"
+    accuracy_decimals: 0
+    update_interval: 30s
+    entity_category: diagnostic
+    lambda: 'return (float) id(roomba).get_snap_count();'
+  - platform: template
+    name: "Biais gyro"
+    unit_of_measurement: "°/s"
+    accuracy_decimals: 3
+    update_interval: 30s
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_gyro_bias();'
+  - platform: wifi_signal
+    name: "Wi-Fi RSSI"
+    update_interval: 60s
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: template
+    name: "Activite"
+    id: activity
+    update_interval: 1s
+    lambda: 'return id(roomba).get_activity();'
+  - platform: template
+    name: "Etat de charge"
+    update_interval: 10s
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_charge_text();'
+  - platform: template
+    name: "Version firmware robot"
+    update_interval: 60s
+    entity_category: diagnostic
+    lambda: 'return id(roomba).get_fw_version();'
+
+binary_sensor:
+  - platform: template
+    name: "Sur la base"
+    device_class: plug
+    lambda: 'return id(roomba).is_docked();'
+  - platform: template
+    name: "En charge"
+    device_class: battery_charging
+    lambda: 'return id(roomba).is_charging();'
+  - platform: template
+    name: "Pare-chocs droit"
+    device_class: problem
+    lambda: 'return (id(roomba).get_bumps() & 0x01) != 0;'
+  - platform: template
+    name: "Pare-chocs gauche"
+    device_class: problem
+    lambda: 'return (id(roomba).get_bumps() & 0x02) != 0;'
+  - platform: template
+    name: "Falaise detectee"
+    device_class: safety
+    lambda: 'return id(roomba).get_cliffs() != 0;'
+  - platform: template
+    name: "Roue levee"
+    device_class: safety
+    lambda: 'return id(roomba).get_wheeldrops() != 0;'
+  - platform: template
+    name: "Flux robot actif"
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: 'return id(roomba).stream_ok();'
+
+button:
+  - platform: template
+    name: "Nettoyer"
+    on_press:
+      - lambda: 'id(roomba).start_clean();'
+  - platform: template
+    name: "Nettoyage max"
+    on_press:
+      - lambda: 'id(roomba).start_max();'
+  - platform: template
+    name: "Nettoyage localise"
+    on_press:
+      - lambda: 'id(roomba).start_spot();'
+  - platform: template
+    name: "Retour a la base"
+    on_press:
+      - lambda: 'id(roomba).dock();'
+  - platform: template
+    name: "Arreter"
+    on_press:
+      - lambda: 'id(roomba).stop();'
+  - platform: template
+    name: "Localiser (bip)"
+    on_press:
+      - lambda: 'id(roomba).locate();'
+  - platform: template
+    name: "Reveiller"
+    entity_category: diagnostic
+    on_press:
+      - lambda: 'id(roomba).wake();'
+  - platform: template
+    name: "Lire version firmware"
+    entity_category: diagnostic
+    on_press:
+      - lambda: 'id(roomba).read_version();'
+  - platform: template
+    name: "Reinitialiser la pose"
+    entity_category: diagnostic
+    on_press:
+      - lambda: 'id(roomba).reset_pose();'
+  - platform: restart
+    name: "Redemarrer"
+    entity_category: diagnostic
+
+switch:
+  - platform: template
+    name: "Recalage sur les murs"
+    icon: mdi:wall
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_ON
+    lambda: 'return id(roomba).get_wall_snap_enabled();'
+    turn_on_action:
+      - lambda: 'id(roomba).set_wall_snap_enabled(true);'
+    turn_off_action:
+      - lambda: 'id(roomba).set_wall_snap_enabled(false);'
+  - platform: template
+    name: "Mode manuel"
+    icon: mdi:gamepad-variant
+    lambda: 'return id(roomba).is_manual();'
+    turn_on_action:
+      - lambda: 'id(roomba).manual_mode(true);'
+    turn_off_action:
+      - lambda: 'id(roomba).manual_mode(false);'
+
+number:
+  - platform: template
+    id: max_speed_num
+    name: "Vitesse max manuelle"
+    unit_of_measurement: "mm/s"
+    min_value: 50
+    max_value: 400
+    step: 10
+    initial_value: 200
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - lambda: 'id(roomba).set_max_speed((int) x);'

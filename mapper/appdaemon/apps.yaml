@@ -1,0 +1,9 @@
+roomba_map:
+  module: roomba_map
+  class: RoombaMap
+  # prefixe des entites ESPHome (nom du device "Aerobot" -> sensor.aerobot_...)
+  prefix: sensor.aerobot
+  activity_entity: sensor.aerobot_activite
+  topic: aerobot/map/png
+  stats_topic: aerobot/map/stats
+  reset_entity: input_button.aerobot_reset_map

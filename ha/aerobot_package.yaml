@@ -1,0 +1,174 @@
+# Package Home Assistant pour Aerobot.
+# Activer dans configuration.yaml :
+#   homeassistant:
+#     packages: !include_dir_named packages
+# puis copier ce fichier dans /config/packages/aerobot.yaml
+# Entites ESPHome attendues : preface "aerobot" (device "Aerobot"). Adapter si le nom differe.
+
+# ------------------------------------------------------------------ MQTT : carte
+mqtt:
+  image:
+    - name: "Carte Aerobot"
+      unique_id: aerobot_map
+      image_topic: aerobot/map/png
+      image_encoding: b64
+      content_type: image/png
+  sensor:
+    - name: "Aerobot couverture"
+      unique_id: aerobot_coverage
+      state_topic: aerobot/map/stats
+      value_template: "{{ value_json.coverage_pct }}"
+      unit_of_measurement: "%"
+      json_attributes_topic: aerobot/map/stats
+
+# ------------------------------------------------------------------ helpers
+input_button:
+  aerobot_reset_map:
+    name: "Aerobot : reinitialiser la carte"
+    icon: mdi:map-marker-remove
+
+# Planning : creer les plages horaires dans l'interface (Parametres > Appareils > Helpers > Planning)
+# ou ici. Exemple : lundi-vendredi 10:00-10:05 (le robot demarre au debut de la plage).
+schedule:
+  aerobot_planning:
+    name: "Aerobot : planning"
+    icon: mdi:calendar-clock
+    monday:    [{from: "10:00:00", to: "10:05:00"}]
+    wednesday: [{from: "10:00:00", to: "10:05:00"}]
+    friday:    [{from: "10:00:00", to: "10:05:00"}]
+
+input_number:
+  aerobot_seuil_batterie_depart:
+    name: "Aerobot : batterie mini pour demarrer"
+    min: 20
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    initial: 80
+  aerobot_seuil_batterie_retour:
+    name: "Aerobot : batterie critique (retour base)"
+    min: 5
+    max: 50
+    step: 5
+    unit_of_measurement: "%"
+    initial: 20
+
+# ------------------------------------------------------------------ entite aspirateur
+# Syntaxe "template: - vacuum:" (HA recent). Si ta version ne la connait pas, voir ha/README.md.
+template:
+  - vacuum:
+      - name: "Aerobot"
+        unique_id: aerobot_vacuum
+        state: >-
+          {% set a = states('sensor.aerobot_activite') %}
+          {{ {'cleaning': 'cleaning', 'manual': 'cleaning', 'returning': 'returning',
+              'docked': 'docked', 'charging': 'docked', 'idle': 'idle', 'asleep': 'idle'}.get(a, 'idle') }}
+        # NB : depuis HA 2026.9 la propriete battery_level n'existe plus sur l'aspirateur ;
+        # la batterie reste disponible via sensor.aerobot_batterie (ESPHome).
+        availability: "{{ is_state('binary_sensor.aerobot_flux_robot_actif', 'on') or is_state('sensor.aerobot_activite', 'asleep') }}"
+        start:
+          - action: button.press
+            target: {entity_id: button.aerobot_nettoyer}
+        stop:
+          - action: button.press
+            target: {entity_id: button.aerobot_arreter}
+        pause:
+          - action: button.press
+            target: {entity_id: button.aerobot_arreter}
+        return_to_base:
+          - action: button.press
+            target: {entity_id: button.aerobot_retour_a_la_base}
+        clean_spot:
+          - action: button.press
+            target: {entity_id: button.aerobot_nettoyage_localise}
+        locate:
+          - action: button.press
+            target: {entity_id: button.aerobot_localiser_bip}
+
+# ------------------------------------------------------------------ automations
+automation:
+  - id: aerobot_planning_demarrage
+    alias: "Aerobot : demarrage planifie"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: schedule.aerobot_planning
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: sensor.aerobot_activite
+        state: ["docked", "charging", "idle"]
+      - condition: template
+        value_template: >-
+          {{ states('sensor.aerobot_batterie') | float(0) >= states('input_number.aerobot_seuil_batterie_depart') | float(80) }}
+    actions:
+      - action: vacuum.start
+        target: {entity_id: vacuum.aerobot}
+
+  # Firmware < 3.8.2 (cas de Dimitri : 3.5.62 selon l'app) : un robot endormi sur la base ne se
+  # reveille pas par BRC (spec OI 2021, p. 7 et 41). On previent au lieu d'echouer en silence.
+  - id: aerobot_planning_robot_endormi
+    alias: "Aerobot : planning impossible, robot endormi"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: schedule.aerobot_planning
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: sensor.aerobot_activite
+        state: "asleep"
+    actions:
+      - action: persistent_notification.create
+        data:
+          title: "Aerobot (Dimitri)"
+          message: "Le robot dort sur sa base : appuie une fois sur CLEAN pour le reveiller, ou voir le tuto (section reveil)."
+
+  - id: aerobot_batterie_critique
+    alias: "Aerobot : batterie critique -> retour base"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.aerobot_batterie
+        below: input_number.aerobot_seuil_batterie_retour
+    conditions:
+      - condition: state
+        entity_id: sensor.aerobot_activite
+        state: "cleaning"
+    actions:
+      - action: vacuum.return_to_base
+        target: {entity_id: vacuum.aerobot}
+
+  - id: aerobot_fin_de_cycle
+    alias: "Aerobot : fin de cycle -> retour base"
+    description: "Si le robot s'immobilise hors de la base apres un nettoyage, on le renvoie a la base."
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: sensor.aerobot_activite
+        from: "cleaning"
+        to: "idle"
+        for: "00:00:20"
+    actions:
+      - action: vacuum.return_to_base
+        target: {entity_id: vacuum.aerobot}
+
+  - id: aerobot_pas_de_nouvelles
+    alias: "Aerobot : robot injoignable"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.aerobot_flux_robot_actif
+        to: "off"
+        for: "00:15:00"
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.aerobot_activite
+            state: ["docked", "charging", "asleep"]
+    actions:
+      - action: persistent_notification.create
+        data:
+          title: "Aerobot"
+          message: "Plus de nouvelles du Roomba depuis 15 min (hors base). Verifier qu'il n'est pas bloque."

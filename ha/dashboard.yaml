@@ -1,0 +1,52 @@
+# Vue Lovelace (mode YAML) : Tableau de bord > Modifier > editeur brut, coller sous "views:".
+# Ressource a ajouter : Parametres > Tableaux de bord > Ressources : /local/aerobot-joystick-card.js (module)
+title: Aérobot
+path: aerobot
+icon: mdi:robot-vacuum
+cards:
+  - type: vertical-stack
+    cards:
+      - type: picture-entity
+        entity: image.carte_aerobot
+        show_state: false
+        show_name: false
+        camera_view: auto
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Réinitialiser la carte
+            icon: mdi:map-marker-remove
+            tap_action:
+              action: perform-action
+              perform_action: input_button.press
+              target: {entity_id: input_button.aerobot_reset_map}
+          - type: entity
+            entity: sensor.aerobot_couverture
+            name: Couverture
+  - type: entities
+    title: État
+    entities:
+      - entity: vacuum.aerobot
+      - entity: sensor.aerobot_batterie
+      - entity: sensor.aerobot_activite
+      - entity: binary_sensor.aerobot_sur_la_base
+      - entity: binary_sensor.aerobot_flux_robot_actif
+      - entity: sensor.aerobot_distance_parcourue
+      - entity: schedule.aerobot_planning
+      - entity: input_number.aerobot_seuil_batterie_depart
+      - entity: input_number.aerobot_seuil_batterie_retour
+  - type: custom:aerobot-joystick-card
+    title: Manette
+  - type: entities
+    title: Réglages / diagnostic
+    entities:
+      - entity: number.aerobot_vitesse_max_manuelle
+      - entity: switch.aerobot_recalage_sur_les_murs
+      - entity: sensor.aerobot_recalages_mur
+      - entity: sensor.aerobot_biais_gyro
+      - entity: sensor.aerobot_pose_x
+      - entity: sensor.aerobot_pose_y
+      - entity: sensor.aerobot_pose_theta
+      - entity: sensor.aerobot_courant_batterie
+      - entity: button.aerobot_reveiller
+      - entity: button.aerobot_reinitialiser_la_pose
