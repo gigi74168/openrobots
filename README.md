@@ -34,7 +34,6 @@ Liste complète et schéma de câblage : [`hardware/WIRING.md`](hardware/WIRING.
 |---|---|---|
 | [`TUTORIEL.md`](TUTORIEL.md) | tutoriel pas à pas, sourcé, de l'ouverture du robot à la carte | rédigé, à compléter avec les vraies photos |
 | [`docs/ETAT_AVANCEMENT.md`](docs/ETAT_AVANCEMENT.md) | où en est le projet, risques, prochaines étapes | à jour au 13/11/2026 |
-| [`docs/PHOTOS.md`](docs/PHOTOS.md) | photos du démontage de Dimitri et du port série | 14 photos |
 | `firmware/` | config ESPHome (`roomba.yaml`) et composant C++ `roomba_oi` (flux de capteurs, pose, pilotage) | écrit, **non compilé** |
 | `ha/` | package Home Assistant, tableau de bord, carte joystick | écrit, **non testé** |
 | `mapper/` | grille d'occupation, rendu PNG, app AppDaemon, simulateur | cœur testé en simulation, app AppDaemon non testée |
@@ -57,6 +56,40 @@ Liste complète et schéma de câblage : [`hardware/WIRING.md`](hardware/WIRING.
    pip install Pillow
    python simulate.py 900
    ```
+
+## Dimitri ouvert : où est le port série
+
+Dimitri a été démonté assez largement (batterie, brosse latérale, pare-chocs, vis du dessous retirés). Le propriétaire pense qu'**il suffisait de déclipser le capot du dessus** pour atteindre le port, mais ce point n'est pas vérifié : essaie d'abord de soulever le capot avec un outil plastique, sans forcer, batterie retirée. Le port série est un **mini-DIN 7 broches** à l'arrière droit, sous le bord du capot.
+
+<p align="center">
+  <img src="docs/photos/pieces-demontees.jpg" alt="Pièces retirées autour du robot" width="48%">
+  <img src="docs/photos/tourelle-ir-fils.jpg" alt="Tourelle infrarouge et ses fils" width="48%">
+</p>
+
+*À gauche : les pièces retirées. À droite : la tourelle infrarouge de la base de recharge reste reliée au capot par des fils rouge et blanc. Débranche son connecteur avant d'ouvrir plus de 2-3 cm, sans tirer sur les fils.*
+
+<p align="center">
+  <img src="docs/photos/port-serie-position.jpg" alt="Position du port série sur le dessus du robot" width="48%">
+  <img src="docs/photos/port-serie-gros-plan.jpg" alt="Le connecteur mini-DIN de près" width="48%">
+</p>
+
+*Le port série, à l'arrière droit, près de la tourelle infrarouge (à gauche), et de près (à droite) : 7 trous, une clé rectangulaire au centre, la fente du boîtier en bas à gauche.*
+
+### Brochage
+
+<p align="center">
+  <img src="hardware/brochage_port_dimitri.png" alt="Brochage du port série de Dimitri, broches 1 à 7" width="70%">
+</p>
+
+| Broche | Nom | Rôle |
+|---|---|---|
+| 1, 2 | Vpwr | batterie non régulée, environ 16 V (fusible 200 mA) : ne jamais relier à autre chose |
+| 3 | RXD | entrée du robot, reçoit de l'ESP |
+| 4 | TXD | sortie du robot, 0-5 V |
+| 5 | BRC | réveil / anti-veille |
+| 6, 7 | GND | masse |
+
+La numérotation vient du schéma de la spec iRobot (p. 3) posé sur la photo. **Sûr** : 1 et 2 (Vpwr) et 6 (GND). **À confirmer au multimètre** : 3/4 et 5/7 peuvent être inversés si le schéma de la spec est une vue de dessous. En attendant, ne rien brancher dans 1 et 2, alimenter l'ESP en USB, ne prendre la masse que sur 6 et essayer 3/4 dans les deux sens. Détails : [`hardware/WIRING.md`](hardware/WIRING.md) et [`docs/ETAT_AVANCEMENT.md`](docs/ETAT_AVANCEMENT.md).
 
 ## Comment ça marche
 
