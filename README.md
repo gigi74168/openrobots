@@ -37,7 +37,7 @@ Liste complète et schéma de câblage : [`hardware/WIRING.md`](hardware/WIRING.
 | `firmware/` | config ESPHome (`roomba.yaml`) et composant C++ `roomba_oi` (flux de capteurs, pose, pilotage) | écrit, **non compilé** |
 | `ha/` | package Home Assistant, tableau de bord, carte joystick | écrit, **non testé** |
 | `mapper/` | grille d'occupation, rendu PNG, app AppDaemon, simulateur | cœur testé en simulation, app AppDaemon non testée |
-| `hardware/` | câblage, brochage du port de Dimitri, boîtier 3D (`enclosure.scad`) | brochage déduit, à confirmer au multimètre ; cotes du boîtier à mesurer |
+| `hardware/` | câblage, brochage du port de Dimitri, boîtier 3D posé sur le dessus (`enclosure.scad`, aperçu : `docs/apercu-boitier.png`) | brochage déduit, à confirmer au multimètre ; position du port et hauteurs du dessus à mesurer |
 | [`roomba-696-handoff.md`](roomba-696-handoff.md) | notes et sources de départ | référence |
 
 ## Démarrer
@@ -59,7 +59,7 @@ Liste complète et schéma de câblage : [`hardware/WIRING.md`](hardware/WIRING.
 
 ## Dimitri ouvert : où est le port série
 
-Dimitri a été démonté assez largement (batterie, brosse latérale, pare-chocs, vis du dessous retirés). Le propriétaire pense qu'**il suffisait de déclipser le capot du dessus** pour atteindre le port, mais ce point n'est pas vérifié : essaie d'abord de soulever le capot avec un outil plastique, sans forcer, batterie retirée. Le port série est un **mini-DIN 7 broches** à l'arrière droit, sous le bord du capot.
+Dimitri a été démonté assez largement (batterie, brosse latérale, pare-chocs, vis du dessous retirés). Le propriétaire pense qu'**il suffisait de déclipser le capot du dessus** pour atteindre le port, mais ce point n'est pas vérifié : essaie d'abord de soulever le capot avec un outil plastique, sans forcer, batterie retirée. Le port série est un **mini-DIN 7 broches sur le dessus du robot**, sous la bague décorative argentée (retirée sur Dimitri) : à l'**avant gauche**, environ 40° à gauche de la tourelle infrarouge vue de dessus (la tourelle est à l'avant). Pas besoin d'ouvrir le capot pour l'atteindre.
 
 <p align="center">
   <img src="docs/photos/pieces-demontees.jpg" alt="Pièces retirées autour du robot" width="48%">
@@ -73,7 +73,7 @@ Dimitri a été démonté assez largement (batterie, brosse latérale, pare-choc
   <img src="docs/photos/port-serie-gros-plan.jpg" alt="Le connecteur mini-DIN de près" width="48%">
 </p>
 
-*Le port série, à l'arrière droit, près de la tourelle infrarouge (à gauche), et de près (à droite) : 7 trous, une clé rectangulaire au centre, la fente du boîtier en bas à gauche.*
+*Le port série, sur le dessus à l'avant gauche, près de la tourelle infrarouge (à gauche), et de près (à droite) : 7 trous, une clé rectangulaire au centre, la fente du boîtier en bas à gauche.*
 
 ### Brochage
 

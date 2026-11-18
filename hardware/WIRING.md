@@ -70,4 +70,4 @@ Notes :
 | Résistances 1 kΩ, 5 kΩ (ou 4,7k), 10 kΩ | 1 chacune |
 | Condensateur 470-1000 µF 16 V | 1 |
 | Mini-DIN 7 broches mâle (ou câble OI sacrifié) | 1 |
-| Perfboard ~48×32 mm, fil fin, gaine thermo | — |
+| Perfboard ~50×40 mm, fil fin, gaine thermo | — |

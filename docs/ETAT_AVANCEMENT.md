@@ -12,13 +12,13 @@ Le robot (« Dimitri », Roomba 696) est démonté, le port série est repéré 
 |---|---|---|
 | Analyse du robot | Roomba 696 (r696040), app 3.5.62-95 | non (version série du firmware inconnue) |
 | Démontage | batterie, brosse, pare-chocs et capot retirés, port série accessible | oui (photos) |
-| Port série repéré | mini-DIN 7 broches sous le capot, arrière droit | oui (photos) |
+| Port série repéré | mini-DIN 7 broches sur le dessus, sous la bague décorative, avant gauche (~40° à gauche de la tourelle IR) | oui (photos) |
 | Brochage du port | déduit du schéma de la spec iRobot, p. 3, voir [`hardware/brochage_port_dimitri.png`](../hardware/brochage_port_dimitri.png) | **non** : à confirmer au multimètre |
 | Firmware ESPHome + composant `roomba_oi` | flux de capteurs, pose odométrie + gyro, pilotage, watchdog, réveil | **non compilé** |
 | Config Home Assistant | aspirateur, planning, automations, carte, joystick | **non testée** |
 | Mapper | grille 5 cm, rendu PNG, simulateur | oui, en simulation seulement |
 | Tutoriel | 19 sections, sources S1-S40 | relu sur le papier, pas suivi de bout en bout |
-| Boîtier 3D | modèle paramétrique `enclosure.scad` (plaque 48×32, boîtier 59×43×21 mm, aperçu sur le robot : `docs/apercu-boitier.png`) | non imprimé, non compilé sous OpenSCAD, place sous le capot à mesurer |
+| Boîtier 3D | `enclosure.scad` : boîtier posé sur le dessus, centré sur le port, fiche coudée par le fond, perfboard 50×40, 56×88×22 mm (aperçus : `docs/apercu-boitier.png`, `docs/apercu-boitier-ouvert.png`) | non imprimé, non compilé sous OpenSCAD, position du port et hauteurs du dessus à mesurer |
 
 ## Brochage du port (état actuel)
 
@@ -37,7 +37,7 @@ Voir l'image et la note dans [`hardware/WIRING.md`](../hardware/WIRING.md).
 5. Lire la vraie version du firmware du robot (bouton « Lire version firmware ») pour savoir si le réveil par BRC est possible.
 6. Mesurer le courant sur Vpwr (doit rester sous 200 mA), puis alimenter l'ESP depuis le robot.
 7. Calibrer l'odométrie et le cap, puis tester la carte dans Home Assistant.
-8. Mesurer l'espace disponible, ajuster et imprimer le boîtier, remonter le robot.
+8. Imprimer le gabarit (`part = "mock"`), le poser sur le dessus pour caler la position du port, mesurer les hauteurs, puis imprimer le boîtier.
 
 ## Risques connus
 
