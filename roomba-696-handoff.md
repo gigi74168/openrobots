@@ -33,7 +33,7 @@ Projets à éviter (obsolètes) : mannkind/ESPHomeRoombaComponent (archivé 2020
 - Niveaux : TX Roomba (5 V) vers RX ESP (3,3 V) via diviseur 5 kΩ / 10 kΩ.
 - Alim : buck converter (Mini360 : entrée 4,75-23 V) vers 5 V ; mesurer le pin 1 au multimètre. Ajouter 470-1000 µF. En test, alimenter l'ESP en USB.
 - GPIO vers BRC (pin 5) ; impulsion basse au moins 1 fois par minute pour éviter la veille profonde.
-- À vérifier : présence du mini-DIN sous le capot du 696, version du firmware.
+- Mini-DIN : présent sur le dessus du 696, sous la bague décorative, à l'avant gauche (photos du 13/11/2026). Reste à vérifier : version du firmware.
 - Impression 3D : boîtier / support ESP (la spec iRobot donne les bossages de vis internes et les cotes).
 
 ## Questions ouvertes

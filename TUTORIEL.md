@@ -106,7 +106,7 @@ Si le « 3.5.62 » de l'app était le même numéro que celui de la carte mère,
 | **Résistances** : 1 kΩ ×2, 4,7 kΩ ou 5,1 kΩ ×2, 10 kΩ ×2 | diviseur de tension, base du transistor | ~1 € |
 | **Condensateur 470-1000 µF 16 V** | stabilise l'alim | < 1 € |
 | **Connecteur mini-DIN 7 broches mâle** ou **câble OI/Create 2** (ex. Adafruit 2438 [S10], non lu en détail) ou **fils à souder** | liaison au robot | ~3-6 € |
-| **Perfboard (plaque à trous) ≈ 40×30 mm**, fil de câblage fin, gaine thermorétractable | assemblage | ~2-3 € |
+| **Perfboard (plaque à trous) ≈ 50×40 mm**, fil de câblage fin, gaine thermorétractable | assemblage | ~2-3 € |
 | **Câble USB-C DE DONNÉES** (pas un câble de charge seule) | flasher l'ESP [S14b] | — |
 
 Ce dont tu as besoin et que tu n'as peut-être pas : **un multimètre** (~10-15 €, indispensable), **un fer à souder + étain** (ou, à défaut, une planche d'essai « breadboard » pour les tests, mais le montage final doit être soudé).
@@ -244,10 +244,10 @@ Tu as validé : le firmware compile, l'ESP se connecte au Wi-Fi, HA le voit. **D
 4. Soulève le capot **par l'arrière** à l'outil plastique, en suivant le bord : clic des clips = normal. 📷 à chaque progression.
 5. Stop si tu vois un **câble tendu** : trouve où il va avant d'aller plus loin.
 
-✅ **Tu dois voir :** la carte mère et, **à l'arrière droit**, le connecteur du port série.
+✅ **Sur Dimitri :** le port série est **sur le dessus**, visible dès que la bague argentée est retirée, à l'**avant gauche** (environ 40° à gauche de la tourelle infrarouge, photo `docs/photos/port-serie-position.jpg`). Pas besoin d'ouvrir le capot pour l'atteindre.
 
 ### 5.4 Reconnaître le port OI
-- La spec place un **mini-DIN 7 broches « à l'arrière droit, sous un cache plastique à rompre »** [S1 ; ⚠ cette formulation provient de résultats de recherche, le PDF n'a pas pu être relu mot à mot].
+- La spec place un **mini-DIN 7 broches « à l'arrière droit, sous un cache plastique à rompre »** [S1 ; ⚠ cette formulation provient de résultats de recherche, le PDF n'a pas pu être relu mot à mot]. **Sur Dimitri, les photos montrent autre chose** : le port est sur le dessus, à l'avant gauche, sous la bague décorative.
 - Sur le 690 d'un projet Hackaday, la **bague argentée cache le connecteur OI**, et le **trou dans le capot est trop étroit pour le mini-DIN complet** : l'auteur a fabriqué un **connecteur sur mesure** (JST en ligne) et fait passer ses fils sous la carte mère [S12].
 - Autres projets : le port est **sous le capot supérieur** [S20][S21].
 
@@ -419,18 +419,20 @@ Le port fournit Vpwr via un **fusible PTC de 200 mA** [S1 p.3] ; **ne dépasse p
 
 ## 10. Imprimer le boîtier en 3D
 
-> Les **cotes du 696 ne sont pas connues** (aucune source). On **mesure** la place disponible, on **imprime un gabarit**, puis le boîtier.
+> Le boîtier se pose **sur le dessus** du robot et coiffe le port série : la fiche mini-DIN coudée descend dans le port par un trou du fond. Le 696 fait environ **Ø335 × 93 mm** (fiches vendeurs : Icecat, Epey) ; avec le boîtier, il monte à **≈ 109 mm**. Vérifie qu'il passe encore sous tes meubles. Aperçu : `docs/apercu-boitier.png`.
 
-### 10.1 Mesurer la place
-Robot ouvert : mesure **longueur × largeur × hauteur libres** à côté du port (derrière la roue droite sous le capot, par exemple). Pour référence, un projet a logé une carte de 5,9 × 1,9 cm dans cet espace sur un 632 [S9] ; ton ESP32-C3 SuperMini fait environ 22,5 × 18 mm (⚠ cote usuelle, à mesurer).
+### 10.1 Mesurer et caler avec le gabarit
+1. Ouvre `hardware/enclosure.scad` dans OpenSCAD. Les valeurs à vérifier sont en haut : `port_r` (distance centre du robot → port, 134 mm estimé sur photo), `port_a` (angle depuis la tourelle, 39° vers la gauche), `feet_in_h` et `feet_out_h` (hauteur des pieds sur le capot central et dans la piste du port, ⚠ estimées).
+2. `part = "mock"` → **F6** → **Fichier → Exporter → Exporter en STL** [S18b]. Imprime ce **cadre plat de 1,2 mm**.
+3. Pose-le sur Dimitri : l'**anneau** doit entourer le port. Sinon, corrige `port_r` / `port_a` et réimprime.
+4. Mesure au pied à coulisse le dénivelé entre le capot central brillant, l'anneau gris et la piste du port, puis ajuste `feet_in_h` et `feet_out_h` (le fond doit passer au-dessus de l'anneau gris sans le toucher).
 
-### 10.2 Ouvrir et paramétrer `hardware/enclosure.scad`
-1. Ouvre le fichier dans OpenSCAD.
-2. En haut : `inner_l`, `inner_w`, `inner_h` = **ta place disponible moins 2 mm**.
-3. Réglage de `part = "mock"` → **F6** (rendu) → **Fichier → Exporter → Exporter en STL** [S18b]. Imprime ce **cadre plat** et **essaie-le dans le robot**.
+### 10.2 Fiche et fixation
+- Fiche : une **mini-DIN coudée** (ou un câble sacrifié). Sa partie métallique descend dans le port ; le corps reste dans le boîtier (⚠ vérifie que le corps fait moins de 10 mm de haut).
+- Fixation : 4 pastilles d'**adhésif double face épais** (type VHB) sous les pieds. Le boîtier reste démontable en tirant doucement.
 
 ### 10.3 Boîtier
-1. `part = "box"` → F6 → exporter le STL ; `part = "lid"` → idem.
+1. `part = "box"` → F6 → exporter le STL ; `part = "lid"` → idem. Imprime le boîtier **fond en bas** et le couvercle **face gravée sur le plateau**.
 2. Slicer (PrusaSlicer : importer → choisir imprimante/filament → **hauteur de couche 0,15-0,2 mm**, **remplissage ~15 %**, **supports si surplombs**, **« Slice now »** → exporter le G-code [S18]).
 3. Si OpenSCAD affiche `not a valid 2-manifold` : des faces coïncident ; fais dépasser légèrement les formes soustraites [S18b].
 4. Matériau : **PLA** suffit hors chaleur ; **PETG** si tu veux plus de tenue (⚠ recommandation générale, non sourcée).
@@ -441,7 +443,7 @@ Robot ouvert : mesure **longueur × largeur × hauteur libres** à côté du por
 
 1. **Soude** le montage sur la perfboard (ou fais les contrôles de l'étape 7.3 sur la version finale).
 2. Fixe le **MPU6050 à plat, rigide** (double-face ou vis), **axe Z vertical**, **loin du moteur de brosse** (vibrations ; le moteur de brosse perturbe aussi les magnétomètres [S30], on n'utilise que le gyro).
-3. Fais passer les fils **sans pincement** sous les rebords du capot. Le projet 178565 signale qu'il y a peu de place entre le module de brosse et le châssis [S12].
+3. Passe la fiche par le trou du fond, serre les fils entre les deux plots avec un collier, branche la fiche dans le port, puis colle le boîtier. Rien ne passe sous le capot.
 4. **Rebranche** : mini-DIN (ou fils soudés), refais **la mesure de courant** de l'étape 9.
 5. **Avant de refermer**, fais **tous les tests** de l'étape 8 (commandes, capteurs, cap) **ouvert**.
 6. Referme en suivant **l'ordre inverse** (photos). Remets les **vis à leur place** (types différents).
@@ -610,7 +612,7 @@ La spec : **508,8 comptes par tour de roue**, roue 72 mm → ~0,4445 mm/compte [
 - **Efficacité du maintien d'éveil** sur la base pour un firmware ancien.
 - **Compilation** du firmware, **syntaxe `template: - vacuum:`** selon ta version de HA, **dossier des apps AppDaemon**, **installation de Pillow** sur AppDaemon, compatibilité **Python 3.14** avec ESPHome.
 - **Précision de la carte** sur le vrai robot (seule une simulation a été faite).
-- **Dimensions disponibles** sous le capot.
+- **Position exacte du port et hauteurs du dessus** du robot (pour caler le boîtier : gabarit `part = "mock"`).
 - Prix : estimations / relevés partiels.
 
 ---
