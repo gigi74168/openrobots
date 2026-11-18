@@ -1,5 +1,11 @@
 # OpenRobots — Aérobot ESP
 
+<!-- progression:debut -->
+<p align="center"><img src="docs/progression.svg" alt="Progression du projet : 43 %, 6 étapes sur 14" width="100%"></p>
+
+**Avancement : 43 %** `█████████░░░░░░░░░░░` 6 étapes sur 14 (Conception 6/6 · Mesures 0/2 · Essais 0/4 · Montage 0/2). Prochaine étape : acheter le multimètre et le reste du matériel. Détail : [Feuille de route](#feuille-de-route).
+<!-- progression:fin -->
+
 Libérer un **Roomba 696** (surnommé **Dimitri**) du cloud iRobot. Un ESP32-C3 se branche sur le port série du robot (l'« Open Interface »), tourne sous **ESPHome** et s'intègre à **Home Assistant**. On récupère le contrôle local, un planning, une manette, et une carte approximative de la pièce. Tout reste à la maison, sans compte iRobot.
 
 <p align="center">
@@ -270,18 +276,27 @@ L'ordre recommandé, du moins risqué au plus engageant. Le [`TUTORIEL.md`](TUTO
 
 ## Feuille de route
 
+La barre de progression en haut de la page se calcule à partir de cette liste. Après avoir coché une case, lance `python tools/progression.py` pour la mettre à jour.
+
+**Conception**
 - [x] Analyse du robot et choix de la solution (ESP sur le port série)
 - [x] Démontage, repérage du port série sur le dessus
 - [x] Brochage déduit de la spec, posé sur la photo
 - [x] Firmware, package Home Assistant, manette et mapper écrits
 - [x] Mapper testé en simulation
 - [x] Boîtier 3D dessiné, compilé, STL prêts
+
+**Mesures**
 - [ ] Acheter le multimètre et le reste du matériel
 - [ ] Confirmer le brochage au multimètre
+
+**Essais**
 - [ ] Compiler le firmware et corriger les erreurs
 - [ ] Banc d'essai : flux de capteurs, commandes
 - [ ] Lire la version du firmware du robot (réveil par BRC possible ou non)
 - [ ] Mesurer le courant, alimenter l'ESP depuis le robot
+
+**Montage**
 - [ ] Imprimer le gabarit puis le boîtier, monter l'électronique
 - [ ] Calibrer, tester la carte dans Home Assistant
 
@@ -343,6 +358,7 @@ Détails : [`TUTORIEL.md`](TUTORIEL.md), section 0.
 | [`mapper/`](mapper) | grille d'occupation, rendu PNG, app AppDaemon, simulateur | cœur testé en simulation, app AppDaemon non testée |
 | [`hardware/`](hardware) | câblage, brochage du port de Dimitri, boîtier 3D paramétrique ([`enclosure.scad`](hardware/enclosure.scad)) et ses STL ([`hardware/stl/`](hardware/stl)) | brochage déduit, à confirmer au multimètre ; boîtier compilé mais pas encore imprimé |
 | [`docs/`](docs) | photos du démontage, aperçus 3D du boîtier, vignettes des pièces | — |
+| [`tools/progression.py`](tools/progression.py) | recalcule la barre de progression à partir de la feuille de route | testé |
 | [`roomba-696-handoff.md`](roomba-696-handoff.md) | notes et sources de départ | référence |
 
 Licence : **pas encore choisie**.
