@@ -54,7 +54,7 @@ input_number:
     initial: 20
 
 # ------------------------------------------------------------------ entite aspirateur
-# Syntaxe "template: - vacuum:" (HA recent). Si ta version ne la connait pas, voir ha/README.md.
+# Syntaxe "template: - vacuum:" (HA recent). Si ta version ne la connait pas, voir TUTORIEL.md, section 12.
 template:
   - vacuum:
       - name: "Aerobot"

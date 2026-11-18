@@ -1,10 +1,10 @@
 # État d'avancement — Aérobot ESP
 
-Dernière mise à jour : 13/11/2026.
+Dernière mise à jour : 18/11/2026.
 
 ## En une phrase
 
-Le robot (« Dimitri », Roomba 696) est démonté, le port série est repéré et son brochage est déduit de la spec ; tout le logiciel est écrit mais **rien n'a encore tourné sur du matériel**.
+Le robot (« Dimitri », Roomba 696) est démonté, le port série est repéré sur le dessus et son brochage est déduit de la spec ; le boîtier 3D est dessiné et tout le logiciel est écrit, mais **rien n'a encore tourné sur du matériel**.
 
 ## Fait
 
@@ -17,8 +17,8 @@ Le robot (« Dimitri », Roomba 696) est démonté, le port série est repéré 
 | Firmware ESPHome + composant `roomba_oi` | flux de capteurs, pose odométrie + gyro, pilotage, watchdog, réveil | **non compilé** |
 | Config Home Assistant | aspirateur, planning, automations, carte, joystick | **non testée** |
 | Mapper | grille 5 cm, rendu PNG, simulateur | oui, en simulation seulement |
-| Tutoriel | 19 sections, sources S1-S40 | relu sur le papier, pas suivi de bout en bout |
-| Boîtier 3D | `enclosure.scad` : boîtier posé sur le dessus, centré sur le port, fiche coudée par le fond, perfboard 50×40, 56×88×22 mm (aperçus : `docs/apercu-boitier.png`, `docs/apercu-boitier-ouvert.png`) | non imprimé, non compilé sous OpenSCAD, position du port et hauteurs du dessus à mesurer |
+| Tutoriel | sections 0 à 19, sources S1-S40 | relu sur le papier, pas suivi de bout en bout |
+| Boîtier 3D | `enclosure.scad` : boîtier posé sur le dessus, centré sur le port, fiche coudée par le fond, perfboard 50×40, 56×88×22 mm, cales séparées ; STL dans `hardware/stl/` | compilé sans avertissement (OpenSCAD 2021.01), pièces étanches ; **non imprimé**, position du port et hauteurs du dessus à mesurer |
 
 ## Brochage du port (état actuel)
 

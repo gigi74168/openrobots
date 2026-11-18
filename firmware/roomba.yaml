@@ -18,7 +18,7 @@ esphome:
     priority: -100
     then:
       - lambda: |-
-          // calibration odometrie : (echelle distance, entraxe en mm). Voir README, etape de calibration.
+          // calibration odometrie : (echelle distance, entraxe en mm). Voir TUTORIEL.md, section 15.
           id(roomba).set_calibration(1.0f, 235.0f);
 
 esp32:
