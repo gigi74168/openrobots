@@ -18,7 +18,7 @@ Le robot (« Dimitri », Roomba 696) est démonté, le port série est repéré 
 | Config Home Assistant | aspirateur, planning, automations, carte, joystick | **non testée** |
 | Mapper | grille 5 cm, rendu PNG, simulateur | oui, en simulation seulement |
 | Tutoriel | 19 sections, sources S1-S40 | relu sur le papier, pas suivi de bout en bout |
-| Boîtier 3D | modèle paramétrique `enclosure.scad` | non imprimé, cotes à mesurer |
+| Boîtier 3D | modèle paramétrique `enclosure.scad` (plaque 48×32, boîtier 59×43×21 mm, aperçu sur le robot : `docs/apercu-boitier.png`) | non imprimé, non compilé sous OpenSCAD, place sous le capot à mesurer |
 
 ## Brochage du port (état actuel)
 

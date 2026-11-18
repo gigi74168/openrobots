@@ -106,7 +106,7 @@ Si le « 3.5.62 » de l'app était le même numéro que celui de la carte mère,
 | **Résistances** : 1 kΩ ×2, 4,7 kΩ ou 5,1 kΩ ×2, 10 kΩ ×2 | diviseur de tension, base du transistor | ~1 € |
 | **Condensateur 470-1000 µF 16 V** | stabilise l'alim | < 1 € |
 | **Connecteur mini-DIN 7 broches mâle** ou **câble OI/Create 2** (ex. Adafruit 2438 [S10], non lu en détail) ou **fils à souder** | liaison au robot | ~3-6 € |
-| **Perfboard (plaque à trous) ≈ 40×30 mm**, fil de câblage fin, gaine thermorétractable | assemblage | ~2-3 € |
+| **Perfboard (plaque à trous) ≈ 48×32 mm**, fil de câblage fin, gaine thermorétractable | assemblage | ~2-3 € |
 | **Câble USB-C DE DONNÉES** (pas un câble de charge seule) | flasher l'ESP [S14b] | — |
 
 Ce dont tu as besoin et que tu n'as peut-être pas : **un multimètre** (~10-15 €, indispensable), **un fer à souder + étain** (ou, à défaut, une planche d'essai « breadboard » pour les tests, mais le montage final doit être soudé).
@@ -419,7 +419,7 @@ Le port fournit Vpwr via un **fusible PTC de 200 mA** [S1 p.3] ; **ne dépasse p
 
 ## 10. Imprimer le boîtier en 3D
 
-> Les **cotes du 696 ne sont pas connues** (aucune source). On **mesure** la place disponible, on **imprime un gabarit**, puis le boîtier.
+> Le 696 fait environ **Ø335 × 93 mm** (fiches vendeurs : Icecat, Epey), mais la **place libre sous le capot reste inconnue**. On **mesure** la place disponible, on **imprime un gabarit**, puis le boîtier.
 
 ### 10.1 Mesurer la place
 Robot ouvert : mesure **longueur × largeur × hauteur libres** à côté du port (derrière la roue droite sous le capot, par exemple). Pour référence, un projet a logé une carte de 5,9 × 1,9 cm dans cet espace sur un 632 [S9] ; ton ESP32-C3 SuperMini fait environ 22,5 × 18 mm (⚠ cote usuelle, à mesurer).
