@@ -1,10 +1,10 @@
 # État d'avancement — Aérobot ESP
 
-Dernière mise à jour : 13/11/2026.
+Dernière mise à jour : 18/11/2026.
 
 ## En une phrase
 
-Le robot (« Dimitri », Roomba 696) est démonté, le port série est repéré et son brochage est déduit de la spec ; tout le logiciel est écrit mais **rien n'a encore tourné sur du matériel**.
+Le robot (« Dimitri », Roomba 696) est démonté, le port série est repéré sur le dessus et son brochage est déduit de la spec ; le boîtier 3D est dessiné et tout le logiciel est écrit, mais **rien n'a encore tourné sur du matériel**.
 
 ## Fait
 
