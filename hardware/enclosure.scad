@@ -4,9 +4,11 @@
 //
 // OpenSCAD : choisir part, F6, puis Fichier > Exporter > STL.
 //   "mock"    gabarit plat de 1,2 mm a poser sur le robot : verifie l'emplacement et le trou du port
-//   "box"     boitier (imprimer fond en bas)
-//   "lid"     couvercle (imprimer a l'envers, face gravee sur le plateau)
+//   "box"     boitier, fond plat sur le plateau
+//   "lid"     couvercle, deja retourne : face gravee sur le plateau
+//   "feet"    4 cales (2 hautes, 2 basses) a coller sous le boitier
 //   "preview" vue d'ensemble sur un Roomba simplifie
+// Les pieces "mock", "box", "lid" et "feet" sortent deja orientees et centrees pour l'impression.
 //
 // Repere : origine = centre du robot, vu de dessus. Y = avant du robot (tourelle IR).
 // Les angles sont comptes depuis l'avant, positifs vers la GAUCHE du robot.
@@ -15,7 +17,7 @@
 // Cotes connues : robot ~335 x 93 mm (fiches vendeurs Icecat, Epey).
 // Position du port estimee sur docs/photos/port-serie-position.jpg (+-5 mm, +-5 deg).
 
-part = "preview";            // "mock" | "box" | "lid" | "preview"
+part = "preview";            // "mock" | "box" | "lid" | "feet" | "preview"
 
 // ---------- Robot ----------
 port_r = 134;                // centre du robot -> centre du port (mm)
@@ -31,8 +33,9 @@ hw = 28;                     // demi-largeur exterieure (largeur totale 56)
 corner_r = 4;
 wall = 2; floor_t = 2; inner_h = 16; lid_t = 2; lip_h = 2; tol = 0.3;
 
-feet_in_h = 2;               // pieds poses sur le capot central (A MESURER)
-feet_out_h = 5.2;            // pieds poses dans la piste du port, plus basse (A MESURER)
+feet_in_h = 2;               // cales posees sur le capot central (A MESURER)
+feet_out_h = 5.2;            // cales posees dans la piste du port, plus basse (A MESURER)
+feet_d = 10;
 plug_hole_d = 20;            // passage de la fiche mini-DIN coudee
 
 post_d = 6; screw_d = 2.4; screw_head_d = 4.2;     // vis M2 x 10 auto-taraudeuses
@@ -85,12 +88,23 @@ module box() {
   }
   // serre-cable : 2 plots, un collier passe entre eux
   at_box() for (s = [-1, 1]) translate([s*5, 112, floor_t - 0.01]) cylinder(d=4, h=6, $fn=16);
-  // pieds (adhesif double face type VHB dessous)
-  at_box() for (s = [-1, 1]) {
-    translate([s*19, 70, -feet_in_h]) cylinder(d=10, h=feet_in_h + 0.01, $fn=32);
-    translate([s*19, 128, -feet_out_h]) cylinder(d=10, h=feet_out_h + 0.01, $fn=32);
+  // reperes de collage des cales (cercles graves 0,4 mm sous le fond)
+}
+
+// emplacement des cales sous le fond (repere du boitier) : [u, v, hauteur]
+function feet_uvh() = [[-19, 70, feet_in_h], [19, 70, feet_in_h], [-19, 128, feet_out_h], [19, 128, feet_out_h]];
+
+module box_printable() difference() {
+  box();
+  at_box() for (f = feet_uvh()) translate([f[0], f[1], -0.01]) difference() {
+    cylinder(d=feet_d + 0.8, h=0.4, $fn=48); cylinder(d=feet_d, h=1, $fn=48);
   }
 }
+
+// cales, collees au fond avec de l'adhesif epais type VHB (ou de la colle cyano)
+module feet() for (i = [0:3]) translate([(i - 1.5)*(feet_d + 4), 0, 0]) cylinder(d=feet_d, h=feet_uvh()[i][2], $fn=48);
+
+module feet_placed() at_box() for (f = feet_uvh()) translate([f[0], f[1], -f[2]]) cylinder(d=feet_d, h=f[2] + 0.01, $fn=48);
 
 module lid() {
   difference() {
@@ -148,13 +162,18 @@ module robot() {
   }
 }
 
-if (part == "box") box();
-else if (part == "lid") lid();
-else if (part == "mock") mock();
+// orientation d'impression : axe du boitier sur Y, centre a l'origine
+module print_pose() translate([0, -(r_in + r_out)/2, 0]) rotate([0, 0, -a_c]) children();
+
+if (part == "box") print_pose() box_printable();
+else if (part == "lid") translate([0, 0, lid_t]) rotate([180, 0, 0]) print_pose() lid();
+else if (part == "mock") print_pose() mock();
+else if (part == "feet") feet();
 else {
   robot();
   translate([0, 0, face_z + feet_in_h]) {
     color("#c9cdd1") box();
+    color("#9a8f7a") feet_placed();
     parts();
     color("#c9cdd1", 0.5) translate([0, 0, floor_t + inner_h + 25]) lid();
   }

@@ -432,10 +432,11 @@ Le port fournit Vpwr via un **fusible PTC de 200 mA** [S1 p.3] ; **ne dépasse p
 - Fixation : 4 pastilles d'**adhésif double face épais** (type VHB) sous les pieds. Le boîtier reste démontable en tirant doucement.
 
 ### 10.3 Boîtier
-1. `part = "box"` → F6 → exporter le STL ; `part = "lid"` → idem. Imprime le boîtier **fond en bas** et le couvercle **face gravée sur le plateau**.
-2. Slicer (PrusaSlicer : importer → choisir imprimante/filament → **hauteur de couche 0,15-0,2 mm**, **remplissage ~15 %**, **supports si surplombs**, **« Slice now »** → exporter le G-code [S18]).
-3. Si OpenSCAD affiche `not a valid 2-manifold` : des faces coïncident ; fais dépasser légèrement les formes soustraites [S18b].
-4. Matériau : **PLA** suffit hors chaleur ; **PETG** si tu veux plus de tenue (⚠ recommandation générale, non sourcée).
+1. Les STL sont déjà prêts dans `hardware/stl/` (`box`, `lid`, `feet`, `mock`), orientés pour l'impression. Si tu as changé une cote : `part = "box"` → F6 → exporter le STL, puis idem pour `lid` et `feet`. Le boîtier s'imprime **fond sur le plateau**, le couvercle **face gravée sur le plateau** (le STL est déjà retourné), sans supports.
+2. Colle les **4 cales** (`feet`) sous le boîtier, dans les cercles gravés du fond : les 2 basses (2 mm) côté bouton CLEAN, les 2 hautes (5,2 mm) côté port.
+3. Slicer (PrusaSlicer : importer → choisir imprimante/filament → **hauteur de couche 0,15-0,2 mm**, **remplissage ~15 %**, **supports si surplombs**, **« Slice now »** → exporter le G-code [S18]).
+4. Si OpenSCAD affiche `not a valid 2-manifold` : des faces coïncident ; fais dépasser légèrement les formes soustraites [S18b].
+5. Matériau : **PLA** suffit hors chaleur ; **PETG** si tu veux plus de tenue (⚠ recommandation générale, non sourcée).
 
 ---
 
