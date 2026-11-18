@@ -1,0 +1,46 @@
+# Met a jour la barre de progression du README a chaque push qui touche la feuille de route.
+# Le commit est fait par github-actions[bot] avec le GITHUB_TOKEN : il ne relance pas ce workflow.
+name: Barre de progression
+
+on:
+  push:
+    paths:
+      - README.md
+      - tools/progression.py
+      - docs/progression.svg
+      - .github/workflows/progression.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: progression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mise-a-jour:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Recalculer la barre
+        run: python tools/progression.py
+
+      - name: Commiter si la barre a changé
+        run: |
+          if git diff --quiet -- README.md docs/progression.svg; then
+            echo "La barre est déjà à jour."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/progression.svg
+          git commit -m "Barre de progression mise à jour automatiquement"
+          git push

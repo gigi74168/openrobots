@@ -276,7 +276,7 @@ L'ordre recommandé, du moins risqué au plus engageant. Le [`TUTORIEL.md`](TUTO
 
 ## Feuille de route
 
-La barre de progression en haut de la page se calcule à partir de cette liste. Après avoir coché une case, lance `python tools/progression.py` pour la mettre à jour.
+La barre de progression en haut de la page se calcule à partir de cette liste. **Coche simplement une case** (`- [ ]` → `- [x]`) et pousse : l'Action GitHub [`progression.yml`](.github/workflows/progression.yml) recalcule la barre et la commite toute seule. En local, `python tools/progression.py` fait la même chose.
 
 **Conception**
 - [x] Analyse du robot et choix de la solution (ESP sur le port série)
@@ -359,6 +359,7 @@ Détails : [`TUTORIEL.md`](TUTORIEL.md), section 0.
 | [`hardware/`](hardware) | câblage, brochage du port de Dimitri, boîtier 3D paramétrique ([`enclosure.scad`](hardware/enclosure.scad)) et ses STL ([`hardware/stl/`](hardware/stl)) | brochage déduit, à confirmer au multimètre ; boîtier compilé mais pas encore imprimé |
 | [`docs/`](docs) | photos du démontage, aperçus 3D du boîtier, vignettes des pièces | — |
 | [`tools/progression.py`](tools/progression.py) | recalcule la barre de progression à partir de la feuille de route | testé |
+| [`.github/workflows/progression.yml`](.github/workflows/progression.yml) | Action GitHub qui relance ce script à chaque push touchant le README | à valider au premier passage |
 | [`roomba-696-handoff.md`](roomba-696-handoff.md) | notes et sources de départ | référence |
 
 Licence : **pas encore choisie**.
