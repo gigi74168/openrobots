@@ -1,63 +1,102 @@
 # OpenRobots — Aérobot ESP
 
-Libérer un **Roomba 696** du cloud iRobot : un ESP32-C3 branché sur le port série du robot (Open Interface), géré par **ESPHome** et intégré à **Home Assistant**, avec une carte de la pièce, une manette pour le piloter et un planning local.
+Libérer un **Roomba 696** (surnommé **Dimitri**) du cloud iRobot. Un ESP32-C3 se branche sur le port série du robot (l'« Open Interface »), tourne sous **ESPHome** et s'intègre à **Home Assistant**. On récupère le contrôle local, un planning, une manette, et une carte approximative de la pièce. Tout reste à la maison, sans compte iRobot.
 
-> **État du projet : démarrage.** Le robot est ouvert, le port série est repéré sur le dessus et le boîtier 3D est dessiné et ses STL sont prêts. Le firmware, la config Home Assistant et le mapper sont écrits mais **n'ont jamais tourné sur du vrai matériel** (rien n'a été compilé ni flashé, le boîtier n'a pas encore été imprimé). Voir [`docs/ETAT_AVANCEMENT.md`](docs/ETAT_AVANCEMENT.md) pour le détail de ce qui est fait, vérifié et à faire.
+<p align="center">
+  <img src="docs/apercu-boitier.png" alt="Aperçu 3D : le boîtier posé sur le dessus de Dimitri" width="70%">
+</p>
+
+> **État du projet : démarrage.** Le robot est ouvert, le port série est repéré sur le dessus, et le boîtier 3D est dessiné (ses STL sont prêts). Le firmware, la config Home Assistant et le mapper sont écrits mais **n'ont jamais tourné sur du vrai matériel** : rien n'a été flashé ni imprimé. Détail dans [`docs/ETAT_AVANCEMENT.md`](docs/ETAT_AVANCEMENT.md).
+
+| Brique | État | Vérifié sur matériel ? |
+|---|---|---|
+| Repérage du port série | fait (photos) | oui |
+| Brochage du port | déduit de la spec | **non**, à confirmer au multimètre |
+| Boîtier 3D | dessiné, compilé, STL prêts | **non**, pas encore imprimé |
+| Firmware ESPHome + composant `roomba_oi` | écrit | **non**, jamais compilé |
+| Home Assistant (aspirateur, planning, tableau de bord, manette) | écrit | **non** |
+| Carte (mapper) | écrit, testé | en simulation seulement |
+
+## Sommaire
+
+- [Objectif](#objectif)
+- [Comment ça marche](#comment-ça-marche)
+- [Matériel](#matériel)
+- [Câblage](#câblage)
+- [Où est le port série](#où-est-le-port-série)
+- [Le boîtier](#le-boîtier) et ses [modèles 3D](#modèles-3d)
+- [Le firmware ESPHome](#le-firmware-esphome)
+- [Home Assistant](#home-assistant)
+- [La carte de la pièce](#la-carte-de-la-pièce)
+- [Démarrer](#démarrer)
+- [Feuille de route](#feuille-de-route)
+- [Dépannage rapide](#dépannage-rapide)
+- [Questions fréquentes](#questions-fréquentes)
+- [Limites connues](#limites-connues), [Sécurité](#sécurité), [Contenu du dépôt](#contenu-du-dépôt), [Sources](#sources)
+- [Aperçu 3D interactif](#aperçu-3d-interactif)
 
 ## Objectif
 
 | Fonction | Prévu |
 |---|---|
-| Contrôle local sans cloud (démarrer, arrêter, retour base) | oui |
-| Planning géré par Home Assistant | oui |
-| Retour automatique à la base / recharge | oui |
+| Contrôle local sans cloud (démarrer, arrêter, retour base, bip de localisation) | oui |
+| Planning géré par Home Assistant, avec seuil de batterie | oui |
+| Retour automatique à la base (batterie faible, fin de cycle) | oui |
 | Manette (joystick) dans le tableau de bord | oui |
 | Carte d'une pièce de 20-25 m² avec la position du robot | oui, grossière (grille de 5 cm, sans lidar) |
+| Notifications (robot endormi, robot bloqué) | oui |
 
-Budget visé : **50 € maximum** pour toute l'électronique (le Roomba est déjà là). Les prix sont des estimations, à vérifier à l'achat.
+Budget visé : **50 € maximum** pour toute l'électronique (le Roomba est déjà là). Les prix sont des estimations, à vérifier au moment d'acheter.
+
+## Comment ça marche
+
+```mermaid
+flowchart LR
+  R["Roomba 696<br/>port série OI<br/>115200 bauds"] -->|"TXD 5 V → diviseur → GPIO7"| E["ESP32-C3 SuperMini<br/>ESPHome + roomba_oi"]
+  E -->|"GPIO6 → RXD"| R
+  E -->|"GPIO10 → NPN → BRC"| R
+  R -->|"Vpwr ~16 V"| P["Mini360<br/>5 V"]
+  P --> E
+  M["MPU6050<br/>gyroscope"] -->|I2C| E
+  E <-->|"API native ESPHome (Wi-Fi)"| H["Home Assistant"]
+  H -->|"pose + collisions"| A["AppDaemon<br/>mapper"]
+  A -->|"MQTT : image PNG"| H
+  H --> D["Tableau de bord<br/>aspirateur, planning,<br/>carte, manette"]
+```
+
+- **Le Roomba nettoie avec son propre mode Clean.** L'ESP reste en mode **Passive** : il écoute le flux de capteurs du robot (pare-chocs, falaises, roues, encodeurs, batterie) sans prendre la main.
+- **Position (x, y, θ).** La distance vient des encodeurs des roues (environ 0,44 mm par impulsion), le cap vient du **gyroscope MPU6050**. Quand le pare-chocs touche un mur de face, le firmware recale le cap sur un multiple de 90° (pièce supposée rectangulaire). La position revient à zéro quand le robot est immobile sur sa base.
+- **Home Assistant** voit un vrai aspirateur (`vacuum.aerobot`) avec planning, seuils de batterie et notifications.
+- **La carte** est construite par une petite app Python (AppDaemon) à partir de la position et des collisions, puis renvoyée à Home Assistant comme image.
+- **La manette** passe le robot en mode **Safe** et envoie des commandes environ 10 fois par seconde. Sans commande pendant **400 ms**, les moteurs s'arrêtent ; après **30 s** sans commande, le robot repasse en Passive pour pouvoir recharger.
 
 ## Matériel
 
 | Pièce | Rôle |
 |---|---|
-| Roomba 696 (r696040) | robot, déjà possédé |
+| Roomba 696 (r696040) | le robot, déjà possédé |
 | ESP32-C3 SuperMini | cerveau Wi-Fi, parle au robot en série (115200 bauds) |
-| MPU6050 (GY-521) | gyroscope pour le cap |
+| MPU6050 (module GY-521) | gyroscope pour le cap |
 | Mini360 | convertit la batterie du robot (~16 V) en 5 V |
-| NPN + résistances + condensateur | réveil du robot (BRC) et adaptation des niveaux |
-| Perfboard 50 × 40 mm | porte tous les composants dans le boîtier |
-| Boîtier imprimé en 3D | posé sur le dessus du robot, branché directement dans le port (voir [Le boîtier](#le-boîtier)) |
+| 2 NPN (BC547 ou 2N2222), résistances 1 kΩ, 4,7-5 kΩ et 10 kΩ, condensateur 470-1000 µF 16 V | réveil du robot (BRC), adaptation des niveaux, réserve d'énergie |
+| Fiche mini-DIN coudée (ou câble sacrifié) | branchement dans le port série |
+| Perfboard 50 × 40 mm, fil fin, gaine | assemblage |
+| Boîtier imprimé en 3D, 8 vis M2, adhésif double face épais | posé sur le dessus du robot (voir [Le boîtier](#le-boîtier)) |
+| **Outils** : multimètre, fer à souder, outil plastique, imprimante 3D | mesures, soudure, démontage, boîtier |
 
-Liste complète et schéma de câblage : [`hardware/WIRING.md`](hardware/WIRING.md).
+Liste détaillée : [`hardware/WIRING.md`](hardware/WIRING.md) et [`TUTORIEL.md`](TUTORIEL.md), section 2.
 
-## Contenu du dépôt
+## Câblage
 
-| Dossier / fichier | Rôle | Statut |
+| ESP32-C3 | Relié à | Détail |
 |---|---|---|
-| [`TUTORIEL.md`](TUTORIEL.md) | tutoriel pas à pas, sourcé, de l'ouverture du robot à la carte | rédigé, à compléter avec les vraies photos |
-| [`docs/ETAT_AVANCEMENT.md`](docs/ETAT_AVANCEMENT.md) | où en est le projet, risques, prochaines étapes | à jour au 18/11/2026 |
-| `firmware/` | config ESPHome (`roomba.yaml`) et composant C++ `roomba_oi` (flux de capteurs, pose, pilotage) | écrit, **non compilé** |
-| `ha/` | package Home Assistant, tableau de bord, carte joystick | écrit, **non testé** |
-| `mapper/` | grille d'occupation, rendu PNG, app AppDaemon, simulateur | cœur testé en simulation, app AppDaemon non testée |
-| `hardware/` | câblage, brochage du port de Dimitri, boîtier 3D paramétrique ([`enclosure.scad`](hardware/enclosure.scad)) et ses STL ([`hardware/stl/`](hardware/stl)) | brochage déduit, à confirmer au multimètre ; boîtier compilé mais pas encore imprimé, position du port et hauteurs du dessus à mesurer |
-| [`roomba-696-handoff.md`](roomba-696-handoff.md) | notes et sources de départ | référence |
+| GPIO6 (TX) | broche 3 du robot (RXD) | direct : un niveau haut de 3,3 V suffit au robot |
+| GPIO7 (RX) | broche 4 du robot (TXD) | **par un diviseur 5 kΩ / 10 kΩ** : le robot sort du 5 V |
+| GPIO10 | broche 5 du robot (BRC) | par un transistor NPN (base via 1 kΩ) ; GPIO10 à 1 met BRC à 0 V |
+| GPIO4 / GPIO3 | MPU6050 SDA / SCL | I2C à 400 kHz, MPU alimenté en 3,3 V |
+| 5V / GND | sortie du Mini360 (réglée à **5,0 V**) | entrée du Mini360 sur les broches 1 (Vpwr) et 6/7 (GND) du robot |
 
-## Démarrer
-
-1. Lire [`TUTORIEL.md`](TUTORIEL.md) (sécurité, matériel, installation).
-2. Copier `firmware/secrets.example.yaml` en `firmware/secrets.yaml` et le remplir. **Ne jamais publier `secrets.yaml`** (il est dans le `.gitignore`).
-3. Compiler et flasher avec ESPHome (2025.8 ou plus récent, syntaxe `api: actions:`) :
-   ```bash
-   cd firmware
-   esphome run roomba.yaml
-   ```
-4. Copier les fichiers de `ha/` dans Home Assistant (voir `ha/aerobot_package.yaml`, en-tête) et ceux de `mapper/` dans AppDaemon.
-5. Tester le mapper sans robot :
-   ```bash
-   cd mapper
-   pip install Pillow
-   python simulate.py 900
-   ```
+Les broches choisies évitent les broches de démarrage du C3 (GPIO2, 8, 9) ; GPIO8 est la LED de la carte. **Pendant les tests, alimente l'ESP en USB** et ne relie que TX, RX, BRC et la masse : le port du robot ne fournit que 200 mA en continu. Schéma complet et précautions : [`hardware/WIRING.md`](hardware/WIRING.md).
 
 ## Où est le port série
 
@@ -143,28 +182,176 @@ for p in mock box lid feet; do openscad -o stl/$p.stl -D "part=\"$p\"" enclosure
 
 Les quatre pièces compilent sans avertissement et sont étanches (« manifold »), vérifié avec OpenSCAD 2021.01 et trimesh. L'aperçu `apercu_assemblage.stl` sert seulement à regarder : il superpose le robot et le boîtier, ne l'imprime pas.
 
-## Comment ça marche
+## Le firmware ESPHome
 
-- Le Roomba nettoie avec son propre mode Clean. L'ESP reste en mode Passive, lit le flux de capteurs de l'Open Interface (pare-chocs, falaises, encodeurs, batterie) et calcule la position (x, y, θ).
-- Le cap vient du gyroscope. Sur un contact frontal contre un mur, le firmware recale le cap sur un multiple de 90° (pièce rectangulaire).
-- La manette envoie des commandes de pilotage à environ 10 Hz. Sans commande pendant 400 ms, les moteurs s'arrêtent.
+Fichiers : [`firmware/roomba.yaml`](firmware/roomba.yaml) et le composant C++ [`firmware/components/roomba_oi/`](firmware/components/roomba_oi). Il faut **ESPHome 2025.8 ou plus récent** (syntaxe `api: actions:`).
+
+**Ce que fait le composant `roomba_oi`**
+
+- Au démarrage, il passe le robot en Passive et demande un **flux de capteurs** continu (38 octets par trame).
+- S'il ne reçoit plus rien pendant 8 s, il retente un réveil (impulsion BRC puis Start).
+- En Passive et hors nettoyage, il envoie une **impulsion BRC toutes les 50 s** pour éviter que le robot s'endorme (efficacité à vérifier sur Dimitri, voir [Limites](#limites-connues)).
+- Il calcule la pose, mémorise la position de chaque collision pour la carte, et corrige seul le biais du gyroscope quand le robot est immobile.
+- Il sait lire la **version du firmware du robot** (commande Reset, puis lecture du message de démarrage pendant 6 s).
+
+**Entités publiées dans Home Assistant**
+
+| Type | Entités |
+|---|---|
+| Boutons | Nettoyer, Nettoyage max, Nettoyage localisé, Retour à la base, Arrêter, Localiser (bip), Réveiller, Lire version firmware, Réinitialiser la pose, Redémarrer |
+| Capteurs | Batterie (%), Tension, Courant, Température batterie, Distance parcourue, Activité, État de charge, Version firmware robot, Pose X / Y / θ, Collision (compteur, X, Y, θ, côté), Recalages mur, Biais gyro, Wi-Fi RSSI |
+| Capteurs binaires | Sur la base, En charge, Pare-chocs gauche / droit, Falaise détectée, Roue levée, Flux robot actif |
+| Réglages | Recalage sur les murs (interrupteur), Mode manuel (interrupteur), Vitesse max manuelle (50 à 400 mm/s, 200 par défaut) |
+| Actions | `drive` (vitesse de chaque roue en mm/s), `drive_xy` (avance et virage entre -1 et 1), `manual_mode` |
+
+L'entité **Activité** vaut `cleaning`, `manual`, `returning`, `docked`, `charging`, `idle` ou `asleep`.
+
+## Home Assistant
+
+Fichiers : [`ha/aerobot_package.yaml`](ha/aerobot_package.yaml) (package), [`ha/dashboard.yaml`](ha/dashboard.yaml) (vue du tableau de bord) et [`ha/www/aerobot-joystick-card.js`](ha/www/aerobot-joystick-card.js) (carte manette, sans dépendance).
+
+- **Aspirateur** `vacuum.aerobot` : démarrer, arrêter, pause, retour base, nettoyage localisé, localiser.
+- **Planning** `schedule.aerobot_planning` : par défaut lundi, mercredi et vendredi à 10:00, à modifier dans l'interface.
+- **Seuils** : batterie minimum pour démarrer (80 % par défaut), batterie critique qui renvoie à la base (20 %).
+- **Carte** : entité image `image.carte_aerobot` et capteur de couverture, reçus par MQTT.
+
+| Automatisation | Quand | Ce qu'elle fait |
+|---|---|---|
+| Démarrage planifié | début d'une plage du planning, robot sur la base ou inactif, batterie suffisante | lance le nettoyage |
+| Planning impossible | début d'une plage alors que le robot dort | notification : « appuie une fois sur CLEAN » |
+| Batterie critique | batterie sous le seuil pendant un nettoyage | retour à la base |
+| Fin de cycle | robot inactif hors de la base depuis 20 s après un nettoyage | retour à la base |
+| Robot injoignable | plus de flux capteur depuis 15 min hors de la base | notification : vérifier qu'il n'est pas bloqué |
+
+Le tableau de bord regroupe la carte, l'état, la manette et les réglages. Installation pas à pas : [`TUTORIEL.md`](TUTORIEL.md), sections 12 à 14.
+
+## La carte de la pièce
+
+Fichiers : [`mapper/`](mapper). Le cœur ([`mapper_core.py`](mapper/mapper_core.py)) ne dépend que de Pillow. L'app [`appdaemon/roomba_map.py`](mapper/appdaemon/roomba_map.py) lit la position toutes les 0,5 s, met à jour la grille, publie l'image sur MQTT et sauvegarde la carte sur disque toutes les minutes. Un bouton du tableau de bord la remet à zéro.
+
+<p align="center">
+  <img src="mapper/sim_map.png" alt="Carte produite par le simulateur : zone balayée en bleu clair, obstacles en rouge, trajectoire en bleu" width="45%">
+</p>
+
+*Carte produite par le simulateur (15 min dans une pièce de 5 × 4,5 m, odométrie bruitée). Bleu clair : zone balayée. Rouge : points de contact du pare-chocs. Trait bleu : trajectoire. Rond vert : robot. Carré jaune : base. Le cadre blanc est la pièce réelle.*
+
+- **Cellules de 5 cm.** Une cellule est « visitée » si elle passe dans un rayon de 14 cm autour du centre du robot. Les **obstacles** sont les points où le pare-chocs a touché.
+- **Précision** : dans cette simulation, les murs sont estimés entre 6 et 43 cm de leur vraie place selon le côté. Sur le vrai robot, ça dépendra de la calibration (TUTORIEL, section 15).
+- **Pas de lidar** : la carte montre où le robot est passé, pas ce qu'il voit.
+
+Tester sans robot :
+
+```bash
+cd mapper
+pip install Pillow
+python simulate.py 900
+```
+
+Le script affiche la surface balayée et les bornes estimées de la pièce, et écrit `sim_map.png`.
+
+## Démarrer
+
+L'ordre recommandé, du moins risqué au plus engageant. Le [`TUTORIEL.md`](TUTORIEL.md) détaille chaque étape (sections 0 à 19, sources numérotées).
+
+1. **Lire les règles de sécurité** (TUTORIEL, section 0) et préparer le matériel.
+2. **Banc d'essai sans le robot** : copier `firmware/secrets.example.yaml` en `firmware/secrets.yaml`, le remplir, puis compiler et flasher l'ESP en USB :
+   ```bash
+   cd firmware
+   esphome run roomba.yaml
+   ```
+   **Ne jamais publier `secrets.yaml`** (il est dans le `.gitignore`).
+3. **Confirmer le brochage au multimètre**, batterie retirée (TUTORIEL, section 6).
+4. **Premier dialogue** : ESP en USB, seulement TX, RX, BRC et masse reliés au robot. Vérifier que « Flux robot actif » passe à `on`, puis lire la version du firmware du robot.
+5. **Mesurer le courant** sur Vpwr (doit rester sous 200 mA), puis alimenter l'ESP par le robot.
+6. **Imprimer le gabarit**, caler la position du port, puis imprimer et monter le boîtier.
+7. **Home Assistant** : copier `ha/aerobot_package.yaml` dans `/config/packages/aerobot.yaml`, ajouter la vue du tableau de bord et la ressource de la manette.
+8. **La carte** : installer AppDaemon (avec Pillow) et copier les fichiers de `mapper/` (voir `mapper/appdaemon/apps.yaml`).
+9. **Calibrer** le cap et la distance (TUTORIEL, section 15).
+
+## Feuille de route
+
+- [x] Analyse du robot et choix de la solution (ESP sur le port série)
+- [x] Démontage, repérage du port série sur le dessus
+- [x] Brochage déduit de la spec, posé sur la photo
+- [x] Firmware, package Home Assistant, manette et mapper écrits
+- [x] Mapper testé en simulation
+- [x] Boîtier 3D dessiné, compilé, STL prêts
+- [ ] Acheter le multimètre et le reste du matériel
+- [ ] Confirmer le brochage au multimètre
+- [ ] Compiler le firmware et corriger les erreurs
+- [ ] Banc d'essai : flux de capteurs, commandes
+- [ ] Lire la version du firmware du robot (réveil par BRC possible ou non)
+- [ ] Mesurer le courant, alimenter l'ESP depuis le robot
+- [ ] Imprimer le gabarit puis le boîtier, monter l'électronique
+- [ ] Calibrer, tester la carte dans Home Assistant
+
+## Dépannage rapide
+
+| Symptôme | Cause probable | Remède |
+|---|---|---|
+| « Flux robot actif » reste à `off` | TX et RX inversés, robot endormi | croiser TX/RX (broches 3 et 4), appuyer sur CLEAN, bouton « Réveiller » |
+| Home Assistant ne trouve pas l'appareil | Wi-Fi 5 GHz, mauvais identifiants | l'ESP32-C3 ne parle qu'en 2,4 GHz ; ajouter l'appareil par son IP (port 6053) |
+| Tension de batterie absurde | mauvais niveau ou diviseur | mesurer TX (5 V) et le milieu du diviseur (~3,3 V) |
+| L'ESP redémarre en boucle | pic de courant | condensateur, Mini360 bien à 5,0 V, mesure du courant |
+| L'ESP s'éteint et ne repart pas tout de suite | fusible du port déclenché (> 200 mA) | attendre quelques minutes, mesurer, réduire la consommation |
+| Le cap tourne à l'envers | MPU6050 monté dans l'autre sens | `set_gyro_scale(-1.0f)` dans `on_boot` |
+| Carte vide | AppDaemon arrêté, mauvais noms d'entités | journaux AppDaemon, `prefix` dans `apps.yaml` |
+| Carte déformée | cap ou distance non calibrés | TUTORIEL, section 15 |
+| Planning sans effet, notification « robot endormi » | le robot dort sur sa base | appuyer sur CLEAN ; voir TUTORIEL, section 16 |
+
+Tableau complet : [`TUTORIEL.md`](TUTORIEL.md), section 17.
+
+## Questions fréquentes
+
+**Pourquoi pas Valetudo ?** Valetudo ne fonctionne pas sur les Roomba : ils sont verrouillés. La voie ouverte sur la série 600, c'est le port série documenté par iRobot.
+
+**Pourquoi un ESP sur le port série plutôt que l'intégration Roomba de Home Assistant ?** Cette intégration passe par le Wi-Fi d'iRobot et demande de récupérer des identifiants du robot. Le port série donne accès aux capteurs bruts (encodeurs, pare-chocs), indispensables pour la carte et la manette, et ne dépend d'aucun logiciel iRobot. L'intégration Wi-Fi reste une solution de secours pour le réveil (TUTORIEL, section 16).
+
+**Est-ce que le robot nettoie toujours tout seul ?** Oui. L'ESP ne prend la main que pour la manette ; le reste du temps, il écoute. Les boutons du robot marchent comme avant.
+
+**Est-ce réversible ?** Oui : le boîtier est collé à l'adhésif et branché sur le port, sans soudure sur le robot. Il suffit de le débrancher. Désactive quand même les plannings de l'app iRobot pour éviter deux démarrages.
+
+**Ça marche sur un autre Roomba ?** Le firmware vise la série 600 (et sans doute la 500, même Open Interface), mais seul le 696 est prévu ici. Le boîtier est dessiné pour Dimitri : sur un autre modèle, il faudra remesurer la position du port.
 
 ## Limites connues
 
-- Carte grossière : en simulation, les murs sont estimés à 25-40 cm près ; à mesurer sur le vrai robot.
-- Dérive d'odométrie du Roomba 600 non mesurée : une calibration est indispensable.
-- **Réveil depuis la base** : le robot (app 3.5.62) est probablement trop ancien pour se réveiller par BRC (la spec parle de firmware 3.8.2 ou plus). Solutions de repli décrites dans le tutoriel (appui sur CLEAN, etc.).
-- Le brochage du port est **déduit** de la spec et de photos, pas encore mesuré.
-- Le boîtier compile et ses STL sont prêts, mais il n'a pas encore été imprimé ni essayé sur le robot ; la position du port et les hauteurs du dessus sont estimées sur photo.
-- Avec le boîtier, le robot monte à environ 109 mm : il peut ne plus passer sous certains meubles bas. Le retour à la base est aussi à tester (le boîtier ne doit pas gêner la tourelle IR).
+- **Rien n'a encore tourné sur le vrai robot** : le firmware n'a jamais été compilé, la config Home Assistant jamais testée.
+- **Brochage du port déduit**, pas mesuré : les broches 3/4 et 5/7 peuvent être inversées.
+- **Réveil depuis la base** : le robot (app 3.5.62) est probablement trop ancien pour se réveiller par BRC (la spec parle du firmware 3.8.2 ou plus). Solutions de repli dans le TUTORIEL, section 16 (appui sur CLEAN, etc.).
+- **Carte grossière** : en simulation, les murs sont placés entre 6 et 43 cm de leur vraie place ; la dérive d'odométrie du Roomba 600 n'est pas mesurée, une calibration est indispensable.
+- **Boîtier** : ses STL sont prêts, mais il n'a pas été imprimé ni essayé sur le robot ; la position du port et les hauteurs du dessus sont estimées sur photo.
+- **Hauteur** : avec le boîtier, le robot monte à environ 109 mm et peut ne plus passer sous certains meubles bas. Le retour à la base est aussi à tester (le boîtier ne doit pas gêner la tourelle IR).
+- **Consommation** : le courant tiré par l'ESP avec le Wi-Fi actif n'est pas encore mesuré (limite du port : 200 mA en continu).
 
 ## Sécurité
 
-Le robot est alimenté par une batterie Li-ion : **retire-la avant toute intervention** et ne court-circuite jamais les broches 1 et 2 (Vpwr, ~16 V). Détails dans le tutoriel.
+- Le robot est alimenté par une **batterie Li-ion** : **retire-la avant toute intervention**.
+- **Ne court-circuite jamais les broches 1 et 2** (Vpwr, ~16 V) : elles ne se relient qu'à l'entrée du Mini360, en dernier, avec un câble fiable.
+- **Le TX du robot sort en 5 V** : jamais directement sur un GPIO de l'ESP, toujours par le diviseur.
+- Règle le Mini360 à **5,0 V au multimètre avant** de le brancher à l'ESP.
+
+Détails : [`TUTORIEL.md`](TUTORIEL.md), section 0.
+
+## Contenu du dépôt
+
+| Dossier / fichier | Rôle | Statut |
+|---|---|---|
+| [`TUTORIEL.md`](TUTORIEL.md) | tutoriel pas à pas, sourcé, de l'ouverture du robot à la carte | rédigé, à compléter avec les vraies photos |
+| [`docs/ETAT_AVANCEMENT.md`](docs/ETAT_AVANCEMENT.md) | où en est le projet, risques, prochaines étapes | à jour au 18/11/2026 |
+| [`firmware/`](firmware) | config ESPHome (`roomba.yaml`) et composant C++ `roomba_oi` | écrit, **non compilé** |
+| [`ha/`](ha) | package Home Assistant, tableau de bord, carte manette | écrit, **non testé** |
+| [`mapper/`](mapper) | grille d'occupation, rendu PNG, app AppDaemon, simulateur | cœur testé en simulation, app AppDaemon non testée |
+| [`hardware/`](hardware) | câblage, brochage du port de Dimitri, boîtier 3D paramétrique ([`enclosure.scad`](hardware/enclosure.scad)) et ses STL ([`hardware/stl/`](hardware/stl)) | brochage déduit, à confirmer au multimètre ; boîtier compilé mais pas encore imprimé |
+| [`docs/`](docs) | photos du démontage, aperçus 3D du boîtier, vignettes des pièces | — |
+| [`roomba-696-handoff.md`](roomba-696-handoff.md) | notes et sources de départ | référence |
+
+Licence : **pas encore choisie**.
 
 ## Sources
 
-Spec iRobot Roomba 600 Open Interface, projets ESPRoomba, dynodix/esphome-roomba, etc. : liste numérotée en fin de [`TUTORIEL.md`](TUTORIEL.md).
+- Spec iRobot Roomba 600 Open Interface : [copie USC (2016)](https://anrg.usc.edu/ee579/spring2016/Roomba/iRobot_Roomba_600_Open_Interface_Spec.pdf), [édition 2021 (Hackaday)](https://cdn.hackaday.io/files/1835247851890816/2021-04-13_iRobot_Roomba_600_Open_Interface_Spec-3.pdf)
+- Projets voisins : [ESPRoomba (ShonP40)](https://github.com/ShonP40/ESPRoomba), [ArduRoomba (pkyanam)](https://github.com/pkyanam/ArduRoomba)
+- Liste numérotée complète (S1 à S40), avec niveaux de confiance : fin de [`TUTORIEL.md`](TUTORIEL.md)
 
 ## Aperçu 3D interactif
 
