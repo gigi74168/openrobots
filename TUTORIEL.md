@@ -347,7 +347,9 @@ Le Mini360 (puce MP2307 selon Components101 ; d'autres sources parlent d'autres 
 ✅ Sortie = 5,0 V stable.
 
 ### 7.2 Schéma
-Voir `hardware/WIRING.md` (schéma ASCII). Résumé des liaisons :
+<p align="center"><img src="hardware/schema_electrique.svg" alt="Schéma électrique d'Aérobot" width="100%"></p>
+
+Le même schéma en texte et ses notes sont dans `hardware/WIRING.md`. Résumé des liaisons :
 | De | Vers | Remarque |
 |---|---|---|
 | Robot pin 1 (Vpwr) | Mini360 **IN+** | (via le fusible interne 200 mA) |
@@ -366,6 +368,8 @@ Voir `hardware/WIRING.md` (schéma ASCII). Résumé des liaisons :
 **Pourquoi ces GPIO ?** Le C3 a trois broches de démarrage sensibles (**GPIO2, 8, 9**) [S26][S17] : GPIO8 = LED de la carte, GPIO9 = bouton BOOT. On les évite pour les signaux.
 Le choix UART 6/7 et BRC 10 reprend ESPRoomba [S27] (tu peux le relire pour comparer).
 
+> ⚠ **Brochage du transistor :** face plate vers toi, un **BC547** est **C-B-E** et un **2N2222 en boîtier TO-92** est **E-B-C**. Vérifie la fiche de ton modèle et soude d'après les lettres E, B, C.
+
 **Pourquoi un transistor sur BRC ?** BRC est tirée au niveau haut côté robot ; on ne doit que la **tirer à zéro** [S28]. Le transistor évite d'imposer du 3,3 V ou de recevoir du 5 V sur le GPIO.
 
 ### 7.3 Contrôles AVANT de mettre sous tension (tu les fais même si tu es sûr)
@@ -383,6 +387,10 @@ Multimètre en **continuité, tout débranché** :
 ### 7.5 Implanter les composants sur la perfboard (pour le boîtier)
 Le boîtier attend une **perfboard de 50 × 40 mm**, vissée par ses 4 coins. Coupe-la à la bonne taille et perce 4 trous de **2,2 mm** à **2,5 mm des bords** (une vis M2×6 par coin). Garde libre un carré de **5 mm** autour de chaque trou.
 
+Le plan ci-dessous montre l'implantation et le câblage : **relie entre elles les pastilles qui portent le même numéro** (même couleur). La liste des pastilles de chaque réseau est à droite du plan.
+
+<p align="center"><img src="hardware/plan_perfboard.svg" alt="Plan de câblage de la perfboard 50 × 40 mm" width="100%"></p>
+
 Implantation prévue (coordonnées en mm depuis le coin de la plaque côté bouton CLEAN, côté USB) :
 
 | Composant | Position (x, y) | Taille | Remarque |
@@ -391,10 +399,10 @@ Implantation prévue (coordonnées en mm depuis le coin de la plaque côté bout
 | MPU6050 (GY-521) | 27 ; 6 | 21 × 16 | **à plat**, bien soudé ou vissé : la plaque doit rester rigide |
 | Mini360 | 6 ; 27 | 17 × 11 | sous les **fentes d'aération** du couvercle |
 | Condensateur (couché) | 27 ; 26 | Ø8 × 12 | au plus près de l'entrée 5 V de l'ESP |
-| Résistances 1 k, 4,7-5 k, 10 k | 39,5 ; 25-33 | 6 × 2 | |
-| Transistor NPN | 41 ; 36 | TO-92 | |
+| Résistances R1 4,7-5,1 k, R2 10 k, R3 1 k | 42 → 49 ; y = 25,6 / 28,8 / 32 | couchées | une par ligne, de bas en haut R1, R2, R3 |
+| Transistor NPN Q1 | 39 → 44,5 ; 36 | TO-92 | ⚠ brochage selon le modèle (voir 7.2) |
 
-- Fais sortir les **5 fils vers la fiche** (Vpwr, GND, TXD, RXD, BRC) par le **bord y = 40** : c'est le côté du port dans le boîtier.
+- Les **5 fils vers la fiche** partent de 5 pastilles au **bord y = 40** (côté du port dans le boîtier), dans l'ordre broche 1, 6, 4, 3, 5 de la fiche.
 - Hauteur maximale des composants au-dessus de la plaque : **9 mm** au centre, **7 mm** le long des parois (la lèvre du couvercle descend de 2 mm). L'ESP sur ses barrettes monte à environ 6,7 mm avec son USB-C, le condensateur couché à 8 mm : place-le au centre.
 - La LED et les boutons BOOT/RESET de l'ESP tombent sous de petits trous du couvercle (⚠ positions approximatives : vérifie sur ta carte et agrandis les trous si besoin).
 
