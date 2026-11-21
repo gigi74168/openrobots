@@ -27,6 +27,16 @@ Seule la symétrie du schéma et la position de l'encoche ont servi : **1 et 2**
 
 ## Schéma
 
+<p align="center"><img src="schema_electrique.svg" alt="Schéma électrique d'Aérobot : port du Roomba, Mini360, ESP32-C3, MPU6050, diviseur et transistor BRC" width="100%"></p>
+
+Plan de câblage de la perfboard 50 × 40 mm (implantation dans le boîtier, pastilles numérotées à relier) :
+
+<p align="center"><img src="plan_perfboard.svg" alt="Plan de câblage de la perfboard 50 × 40 mm" width="100%"></p>
+
+> ⚠ **Transistor Q1 : le brochage dépend du modèle.** Face plate vers toi, un **BC547** est **C-B-E** et un **2N2222 en boîtier TO-92** est **E-B-C** (vérifie la fiche de ton transistor). Soude d'après les lettres E, B, C, pas d'après la position des pattes.
+
+Les deux images sont générées par [`tools/schemas.py`](../tools/schemas.py) (`pip install schemdraw`, puis `python tools/schemas.py`). Version texte du même schéma :
+
 ```
 Roomba pin 1 (Vpwr) ──► Mini360 IN+            Mini360 OUT+ (réglé à 5,0 V) ──► ESP32-C3 5V
 Roomba pin 6/7 (GND) ─► Mini360 IN-  ── GND commun ── Mini360 OUT- ──► ESP32-C3 GND

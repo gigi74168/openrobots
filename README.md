@@ -1,9 +1,9 @@
 # OpenRobots — Aérobot ESP
 
 <!-- progression:debut -->
-<p align="center"><img src="docs/progression.svg" alt="Progression du projet : 43 %, 6 étapes sur 14" width="100%"></p>
+<p align="center"><img src="docs/progression.svg" alt="Progression du projet : 47 %, 7 étapes sur 15" width="100%"></p>
 
-**Avancement : 43 %** `█████████░░░░░░░░░░░` 6 étapes sur 14 (Conception 6/6 · Mesures 0/2 · Essais 0/4 · Montage 0/2). Prochaine étape : acheter le multimètre et le reste du matériel. Détail : [Feuille de route](#feuille-de-route).
+**Avancement : 47 %** `█████████░░░░░░░░░░░` 7 étapes sur 15 (Conception 7/7 · Mesures 0/2 · Essais 0/4 · Montage 0/2). Prochaine étape : acheter le multimètre et le reste du matériel. Détail : [Feuille de route](#feuille-de-route).
 <!-- progression:fin -->
 
 Libérer un **Roomba 696** (surnommé **Dimitri**) du cloud iRobot. Un ESP32-C3 se branche sur le port série du robot (l'« Open Interface »), tourne sous **ESPHome** et s'intègre à **Home Assistant**. On récupère le contrôle local, un planning, une manette, et une carte approximative de la pièce. Tout reste à la maison, sans compte iRobot.
@@ -102,7 +102,11 @@ Liste détaillée : [`hardware/WIRING.md`](hardware/WIRING.md) et [`TUTORIEL.md`
 | GPIO4 / GPIO3 | MPU6050 SDA / SCL | I2C à 400 kHz, MPU alimenté en 3,3 V |
 | 5V / GND | sortie du Mini360 (réglée à **5,0 V**) | entrée du Mini360 sur les broches 1 (Vpwr) et 6/7 (GND) du robot |
 
-Les broches choisies évitent les broches de démarrage du C3 (GPIO2, 8, 9) ; GPIO8 est la LED de la carte. **Pendant les tests, alimente l'ESP en USB** et ne relie que TX, RX, BRC et la masse : le port du robot ne fournit que 200 mA en continu. Schéma complet et précautions : [`hardware/WIRING.md`](hardware/WIRING.md).
+<p align="center"><img src="hardware/schema_electrique.svg" alt="Schéma électrique d'Aérobot" width="100%"></p>
+
+Pour souder : le [plan de câblage de la perfboard](hardware/plan_perfboard.svg) montre où va chaque composant dans le boîtier ; il suffit de relier les pastilles qui portent le même numéro. ⚠ Le brochage du transistor dépend du modèle (BC547 = C-B-E, 2N2222 TO-92 = E-B-C, face plate vers toi).
+
+Les broches choisies évitent les broches de démarrage du C3 (GPIO2, 8, 9) ; GPIO8 est la LED de la carte. **Pendant les tests, alimente l'ESP en USB** et ne relie que TX, RX, BRC et la masse : le port du robot ne fournit que 200 mA en continu. Schémas, version texte et précautions : [`hardware/WIRING.md`](hardware/WIRING.md).
 
 ## Où est le port série
 
@@ -285,6 +289,7 @@ La barre de progression en haut de la page se calcule à partir de cette liste. 
 - [x] Firmware, package Home Assistant, manette et mapper écrits
 - [x] Mapper testé en simulation
 - [x] Boîtier 3D dessiné, compilé, STL prêts
+- [x] Schéma électrique et plan de câblage de la perfboard dessinés
 
 **Mesures**
 - [ ] Acheter le multimètre et le reste du matériel
@@ -356,8 +361,9 @@ Détails : [`TUTORIEL.md`](TUTORIEL.md), section 0.
 | [`firmware/`](firmware) | config ESPHome (`roomba.yaml`) et composant C++ `roomba_oi` | écrit, **non compilé** |
 | [`ha/`](ha) | package Home Assistant, tableau de bord, carte manette | écrit, **non testé** |
 | [`mapper/`](mapper) | grille d'occupation, rendu PNG, app AppDaemon, simulateur | cœur testé en simulation, app AppDaemon non testée |
-| [`hardware/`](hardware) | câblage, brochage du port de Dimitri, boîtier 3D paramétrique ([`enclosure.scad`](hardware/enclosure.scad)) et ses STL ([`hardware/stl/`](hardware/stl)) | brochage déduit, à confirmer au multimètre ; boîtier compilé mais pas encore imprimé |
+| [`hardware/`](hardware) | schéma électrique, plan de la perfboard, câblage, brochage du port de Dimitri, boîtier 3D paramétrique ([`enclosure.scad`](hardware/enclosure.scad)) et ses STL ([`hardware/stl/`](hardware/stl)) | brochage déduit, à confirmer au multimètre ; boîtier compilé mais pas encore imprimé |
 | [`docs/`](docs) | photos du démontage, aperçus 3D du boîtier, vignettes des pièces | — |
+| [`tools/schemas.py`](tools/schemas.py) | génère le schéma électrique et le plan de la perfboard (`hardware/*.svg`) | testé |
 | [`tools/progression.py`](tools/progression.py) | recalcule la barre de progression à partir de la feuille de route | testé |
 | [`.github/workflows/progression.yml`](.github/workflows/progression.yml) | Action GitHub qui relance ce script à chaque push touchant le README | à valider au premier passage |
 | [`roomba-696-handoff.md`](roomba-696-handoff.md) | notes et sources de départ | référence |

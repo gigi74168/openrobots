@@ -2,7 +2,9 @@
 
 > Ce tutoriel est écrit pour être suivi **pas à pas, sans rien supposer**. Chaque étape dit *quoi faire*, *pourquoi*, *ce que tu dois voir* si ça marche, et *quoi faire sinon*.
 > Les affirmations sont **sourcées** : `[S12]` renvoie à la liste des sources en fin de document, avec un niveau de confiance. Ce qui n'a **pas pu être vérifié** est marqué **⚠ NON VÉRIFIÉ**. Ne saute pas ces marques : elles disent où tu dois vérifier toi-même avant de continuer.
-> Ce qui est écrit dans ce dossier (firmware, config HA, mapper) a été rédigé sans compilateur ESPHome ni Home Assistant à portée : **il est probable qu'il faille corriger quelques détails** à l'étape de compilation. Ce n'est pas un échec, c'est prévu (étape 4.6).
+> Ce qui est écrit dans ce dossier (firmware, config HA, mapper) a été rédigé sans compilateur ESPHome ni Home Assistant à portée : **il est probable qu'il faille corriger quelques détails** à l'étape de compilation. Ce n'est pas un échec, c'est prévu (étape 4.6). Le **boîtier 3D**, lui, a été compilé (OpenSCAD 2021.01) : ses STL sont prêts dans `hardware/stl/`.
+>
+> **Dernière mise à jour : 18/11/2026.** Le port série de Dimitri est **sur le dessus** du robot (avant gauche, sous la bague argentée) et le boîtier se pose dessus : il n'y a plus besoin d'ouvrir le capot.
 
 ---
 
@@ -12,13 +14,13 @@
 2. [Matériel et outils](#2-matériel-et-outils)
 3. [Installer les logiciels sur ton PC Windows](#3-installer-les-logiciels-sur-ton-pc-windows)
 4. [Étape « banc » : flasher l'ESP32 sans toucher au robot](#4-étape-banc--flasher-lesp32-sans-toucher-au-robot)
-5. [Ouvrir Dimitri et repérer le port série](#5-ouvrir-dimitri-et-repérer-le-port-série)
+5. [Accéder au port série de Dimitri](#5-accéder-au-port-série-de-dimitri)
 6. [Mesures de sécurité au multimètre](#6-mesures-de-sécurité-au-multimètre)
 7. [Assembler l'électronique](#7-assembler-lélectronique)
 8. [Premier dialogue avec le Roomba (alimenté en USB)](#8-premier-dialogue-avec-le-roomba-alimenté-en-usb)
 9. [Alimenter l'ESP par le robot et mesurer le courant](#9-alimenter-lesp-par-le-robot-et-mesurer-le-courant)
 10. [Imprimer le boîtier en 3D](#10-imprimer-le-boîtier-en-3d)
-11. [Installation définitive et refermeture](#11-installation-définitive-et-refermeture)
+11. [Installation définitive sur le robot](#11-installation-définitive-sur-le-robot)
 12. [Home Assistant : appareil, aspirateur, planning, tableau de bord](#12-home-assistant--appareil-aspirateur-planning-tableau-de-bord)
 13. [La carte (AppDaemon + MQTT)](#13-la-carte-appdaemon--mqtt)
 14. [La manette (joystick)](#14-la-manette-joystick)
@@ -34,13 +36,13 @@
 
 ### 0.1 Ce que tu vas construire
 ```
-Roomba 696 « Dimitri »  ⇄  petite carte ESP32-C3 (dans le robot)  ⇄  Wi-Fi  ⇄  Home Assistant
+Roomba 696 « Dimitri »  ⇄  ESP32-C3 (boîtier sur le dessus) ⇄  Wi-Fi  ⇄  Home Assistant
    port série OI              + gyroscope MPU6050                      ├─ aspirateur (start/stop/base)
                                                                         ├─ planning
                                                                         ├─ manette (joystick)
                                                                         └─ carte de la pièce
 ```
-Le Roomba garde **son propre cerveau** pour nettoyer. L'ESP32 lit ses capteurs par le port série « Open Interface » (OI), lui envoie des ordres, et calcule où il est.
+Le Roomba garde **son propre cerveau** pour nettoyer. L'ESP32 lit ses capteurs par le port série « Open Interface » (OI), lui envoie des ordres, et calcule où il est. Toute l'électronique tient dans un **boîtier imprimé posé sur le dessus du robot**, branché directement dans le port (aperçu : `docs/apercu-boitier.png`).
 
 ### 0.2 Règles de sécurité (à relire avant chaque séance)
 1. **Batterie retirée** pendant tout démontage et toute soudure [S6][S7].
@@ -66,6 +68,10 @@ Le Roomba garde **son propre cerveau** pour nettoyer. L'ESP32 lit ses capteurs p
 | **Passive / Safe** | modes du Roomba : Passive = il fait ce qu'il veut (nettoie, charge), tu lis ses capteurs ; Safe = tu le pilotes, mais il garde ses protections (falaises, roues levées) [S1 p.7] |
 | **GPIO** | broche d'entrée/sortie de l'ESP32 |
 | **Multimètre** | appareil qui mesure tension (V), courant (A), continuité (bip) |
+| **STL** | fichier 3D qu'on donne au slicer pour imprimer une pièce |
+
+### 0.5 Suivre l'avancement
+Le README affiche une **barre de progression** calculée à partir de sa « Feuille de route ». Quand tu termines une étape de ce tutoriel, ouvre le README sur GitHub et **coche la case correspondante** (`- [ ]` → `- [x]`) : une Action GitHub met la barre à jour toute seule en quelques secondes. Pense ensuite à faire `git pull` sur ton PC avant de modifier autre chose.
 
 ---
 
@@ -105,15 +111,22 @@ Si le « 3.5.62 » de l'app était le même numéro que celui de la carte mère,
 | **2 transistors NPN** (BC547 ou 2N2222) | commander BRC (+1 de rechange) | < 1 € |
 | **Résistances** : 1 kΩ ×2, 4,7 kΩ ou 5,1 kΩ ×2, 10 kΩ ×2 | diviseur de tension, base du transistor | ~1 € |
 | **Condensateur 470-1000 µF 16 V** | stabilise l'alim | < 1 € |
-| **Connecteur mini-DIN 7 broches mâle** ou **câble OI/Create 2** (ex. Adafruit 2438 [S10], non lu en détail) ou **fils à souder** | liaison au robot | ~3-6 € |
+| **Fiche mini-DIN mâle coudée** (7 ou 8 broches), ou **câble OI/Create 2** à recouper (ex. Adafruit 2438 [S10], non lu en détail) | liaison au robot, la fiche descend dans le port par le fond du boîtier (étape 10.2) | ~3-6 € |
 | **Perfboard (plaque à trous) ≈ 50×40 mm**, fil de câblage fin, gaine thermorétractable | assemblage | ~2-3 € |
 | **Câble USB-C DE DONNÉES** (pas un câble de charge seule) | flasher l'ESP [S14b] | — |
+| **Vis M2** : 4 × M2×10 auto-taraudeuses (couvercle), 4 × M2×6 (perfboard) | boîtier | ⚠ non relevé |
+| **Adhésif double face épais** (type VHB), 4 pastilles Ø10 mm | coller le boîtier sur le robot | ⚠ non relevé |
+| **Collier de serrage** 2,5 mm | tenir les fils dans le boîtier | ⚠ non relevé |
+| **Filament** PLA ou PETG, environ 40 g | gabarit, boîtier, couvercle, cales | ⚠ non relevé |
 
 Ce dont tu as besoin et que tu n'as peut-être pas : **un multimètre** (~10-15 €, indispensable), **un fer à souder + étain** (ou, à défaut, une planche d'essai « breadboard » pour les tests, mais le montage final doit être soudé).
 Le budget de 50 € **n'inclut pas** le multimètre ni le fer à souder s'ils te manquent : dis-le-moi et je recalcule.
+> ⚠ Les prix de ce tableau viennent du fichier de passation (relevés partiels du 07/11/2026) ou sont des ordres de grandeur : **ils n'ont pas été revérifiés**. Vérifie-les au moment de commander.
 
 ### 2.2 Outils pour ouvrir le robot
 D'après le guide iFixit du Roomba 692 (même famille que le 696) [S6] : **tournevis Phillips #0 et #00**, un **spudger** (levier plastique) ou carte plastique, un outil d'ouverture plastique, un spudger métal fin. **Pas de Torx.** Prévois une **boîte à compartiments** pour les vis : il y en a **37 de tailles différentes** sur le 692 [S6].
+
+**Sur Dimitri, l'essentiel est plus simple** : le port est sur le dessus, il suffit de retirer la **bague argentée à la main**. Tu n'as besoin du tournevis que pour la **trappe de la batterie** (sous le robot), et d'un **pied à coulisse** pour mesurer les hauteurs du dessus (étape 10.1). Une règle graduée fait l'affaire à défaut.
 
 ---
 
@@ -153,7 +166,8 @@ Le premier `pip install` prend quelques minutes.
 L'ESP32-C3 a l'USB natif : **normalement aucun pilote** [S14b]. Si Windows ne reconnaît rien à l'étape 4, installe le pilote de la puce indiquée sur ta carte (CH340/CP210x) [S14b].
 
 ### 3.4 OpenSCAD et un slicer (pour le boîtier, étape 10)
-- OpenSCAD : https://openscad.org/downloads.html
+- **Les STL sont déjà prêts** dans `hardware/stl/` : OpenSCAD ne sert que si tu dois changer une cote (position du port, hauteur des cales).
+- OpenSCAD (2021.01 ou plus récent) : https://openscad.org/downloads.html
 - Ton slicer habituel (PrusaSlicer, Cura, etc.). Je n'ai documenté que PrusaSlicer [S18].
 
 ---
@@ -213,7 +227,11 @@ Tu as validé : le firmware compile, l'ESP se connecte au Wi-Fi, HA le voit. **D
 
 ---
 
-## 5. Ouvrir Dimitri et repérer le port série
+## 5. Accéder au port série de Dimitri
+
+> **Sur Dimitri, c'est simple :** le port série est **sur le dessus**, sous la **bague argentée** qui s'enlève à la main, à l'**avant gauche** (environ 40° à gauche de la tourelle infrarouge, à ~134 mm du centre, mesuré sur photo). **Pas besoin d'ouvrir le capot** [photos du dépôt ; S41 ; S42]. Tu dois seulement **retirer la batterie** (étape 5.2) avant les mesures et le câblage.
+
+<p align="center"><img src="docs/photos/port-serie-position.jpg" alt="Port série de Dimitri sur le dessus, à l'avant gauche" width="45%"> <img src="docs/photos/port-serie-gros-plan.jpg" alt="Le connecteur mini-DIN de près" width="45%"></p>
 
 > **Avertissement honnête.** Aucune source trouvée ne décrit le démontage **exact du 696**. Les guides les plus proches sont ceux du **692** [S6] et du **690** [S7][S8]. **Tu adaptes.** Règle d'or : **si une pièce résiste, tu cherches la vis cachée au lieu de forcer.**
 
@@ -230,7 +248,16 @@ Tu as validé : le firmware compile, l'ESP se connecte au Wi-Fi, HA le voit. **D
 
 ✅ Tu dois voir : le robot sans batterie. Il **ne démarrera pas** sans elle (⚠ non sourcé).
 
-### 5.3 Retirer le dessus
+### 5.3 Dégager le port (bague argentée)
+1. Robot **sans batterie**, posé à l'endroit.
+2. **Retire la bague argentée** à la main, en la soulevant par le bord [S12]. Ne force pas : si elle résiste, cherche un clip avec l'outil plastique. 📷
+3. Le port apparaît à l'**avant gauche**, dans un logement à collerette métallique, à côté de la tourelle infrarouge (le petit cylindre noir à l'avant).
+
+✅ **Tu dois voir :** un connecteur rond à **7 trous** avec une clé rectangulaire au centre (photo ci-dessus).
+
+### 5.4 Ouvrir le capot (seulement si tu en as besoin)
+Pour accéder au port, ce n'est **pas nécessaire** sur Dimitri. Garde ces infos pour une réparation (carte mère, brosse).
+
 **Ce que disent les sources (sur d'autres modèles de la famille 600) :**
 - Roomba **692** : après le panneau inférieur, **10 vis de 13,3 mm** (« holders »), **2 vis de 7,4 mm** (capteur du bumper), puis on **soulève le couvercle supérieur à l'outil plastique par les languettes latérales et centrales**, puis **15 vis de couvercle** (10 de 9,6 mm, 4 de 9,4 mm, 1 de 9,5 mm) [S6].
 - Roomba **614** : il faut **retirer le bumper et débrancher sa nappe** avant d'ouvrir le dessus [S11].
@@ -238,29 +265,29 @@ Tu as validé : le firmware compile, l'ESP se connecte au Wi-Fi, HA le voit. **D
 - Un utilisateur dit que la procédure du 630 **ne marche pas sur un 690** [S13 — confiance faible].
 
 **Démarche proposée (à adapter) :**
-1. **Retire la bague argentée** à la main (par le bord) [S12]. 📷
+1. Bague argentée retirée (5.3).
 2. Cherche des **vis visibles** sur le dessus et le dessous ; défais-les **toutes**, en rangeant par groupe (étiquette : « dessous-bords », « dessus-centre »…). Les vis de longueurs différentes ne doivent pas être mélangées [S6][S13].
 3. **Ne tire pas** sur le bumper : sa nappe/câble relie un capteur à la carte. Si le bumper bloque l'ouverture : retire-le **doucement** et **débranche sa nappe** [S11] en tirant sur le connecteur, pas sur les fils.
 4. Soulève le capot **par l'arrière** à l'outil plastique, en suivant le bord : clic des clips = normal. 📷 à chaque progression.
 5. Stop si tu vois un **câble tendu** : trouve où il va avant d'aller plus loin.
 
-✅ **Sur Dimitri :** le port série est **sur le dessus**, visible dès que la bague argentée est retirée, à l'**avant gauche** (environ 40° à gauche de la tourelle infrarouge, photo `docs/photos/port-serie-position.jpg`). Pas besoin d'ouvrir le capot pour l'atteindre.
+> ⚠ La **tourelle infrarouge** reste reliée au capot par des fils rouge et blanc : débranche son connecteur avant de soulever le capot de plus de 2-3 cm, sans tirer sur les fils (photo `docs/photos/tourelle-ir-fils.jpg`).
 
-### 5.4 Reconnaître le port OI
+### 5.5 Reconnaître le port OI
 - La spec place un **mini-DIN 7 broches « à l'arrière droit, sous un cache plastique à rompre »** [S1 ; ⚠ cette formulation provient de résultats de recherche, le PDF n'a pas pu être relu mot à mot]. **Sur Dimitri, les photos montrent autre chose** : le port est sur le dessus, à l'avant gauche, sous la bague décorative.
 - Sur le 690 d'un projet Hackaday, la **bague argentée cache le connecteur OI**, et le **trou dans le capot est trop étroit pour le mini-DIN complet** : l'auteur a fabriqué un **connecteur sur mesure** (JST en ligne) et fait passer ses fils sous la carte mère [S12].
-- Autres projets : le port est **sous le capot supérieur** [S20][S21].
+- Sur d'autres modèles, des projets le décrivent **sous le capot supérieur** [S20][S21] ; sur la série 500, la spec le place « sur le dessus, sous le cache décoratif » [S41], ce qui correspond à Dimitri.
 
 📷 **Photographie le port de près**, puis compare avec les images de la spec. Cherche **7 contacts** disposés en demi-cercle (mini-DIN).
 
-### 5.5 Choisir comment te raccorder (3 options)
+### 5.6 Choisir comment te raccorder (3 options)
 | Option | Avantages | Inconvénients |
 |---|---|---|
-| **A. Câble mini-DIN existant** (câble OI/Create) | propre, réversible | le trou du capot peut être trop étroit [S12] |
-| **B. Souder 5 fils directement sur les contacts** | passe partout (projet 183524 [S9]) | demande de la soudure fine ; irréversible |
-| **C. Connecteur sur mesure** (JST/Dupont) | réversible | comme le projet RPi [S12] |
+| **A. Fiche mini-DIN coudée** (achetée ou récupérée sur un câble) | propre, réversible, **prévue par le boîtier** (descend par le trou du fond) | le logement du port peut être trop étroit pour certaines fiches [S12] : essaie la fiche dans le port **avant** de souder |
+| **B. Souder 5 fils directement sur les contacts** | passe partout (projet 183524 [S9]) | demande d'ouvrir le capot et de la soudure fine ; irréversible |
+| **C. Connecteur sur mesure** (broches Dupont dans une fiche imprimée) | réversible | à dessiner après avoir mesuré l'écartement des trous ; comme le projet RPi [S12] |
 
-**Recommandation pour un premier montage :** **A** si le port est accessible, sinon **B**. N'avance pas tant que tu n'as pas **identifié chaque broche** (étape 6).
+**Recommandation :** **A**, c'est ce que le boîtier attend. **C** si aucune fiche ne rentre. N'avance pas tant que tu n'as pas **identifié chaque broche** (étape 6).
 
 ---
 
@@ -281,7 +308,7 @@ Tu as validé : le firmware compile, l'ESP se connecte au Wi-Fi, HA le voit. **D
 
 ### 6.3 Mesurer Vpwr (batterie BRANCHÉE, robot éteint)
 > ⚠ **Seul moment où tu manipules une source sous tension.** Pointes fines, **ne touche qu'un contact à la fois**, ne laisse jamais une sonde glisser sur un contact voisin.
-1. Rebranche la batterie (robot **toujours ouvert**, ne l'allume pas).
+1. Rebranche la batterie (bague argentée retirée, **ne l'allume pas**).
 2. Multimètre en **V continu**. Sonde noire sur un **GND** identifié au 6.2, sonde rouge **sur chacun des autres contacts** un par un.
 3. Note les valeurs :
    - **~12-17 V** sur **2 contacts voisins** → **Vpwr (pins 1 et 2)**. Un Roomba 632 a été mesuré à 16,2-16,9 V [S9] ; la spec dit seulement « non régulée » [S1 p.3].
@@ -291,9 +318,18 @@ Tu as validé : le firmware compile, l'ESP se connecte au Wi-Fi, HA le voit. **D
 ✅ **Résultat attendu :** tu as identifié **GND ×2, Vpwr ×2**, et **3 contacts restants** (RXD, TXD, BRC) que tu n'as pas encore nommés avec certitude.
 
 ### 6.4 Nommer RXD / TXD / BRC
-Avec la spec [S1 p.3] : 3 = RXD (entrée du robot), 4 = TXD (sortie du robot), 5 = BRC.
-Si tu as bien identifié 1,2 (Vpwr) et 6,7 (GND), la **place** de 3, 4, 5 entre les deux se déduit par l'ordre : **3, 4, 5 sont les trois du milieu dans le même ordre que 1→7**. Pour trancher, un test :
-- **Après l'étape 8** (robot sous tension), TXD doit montrer **des impulsions / une tension qui bouge** quand on envoie une commande, alors que RXD et BRC restent « calmes ».
+Avec la spec [S1 p.3] : 3 = RXD (entrée du robot), 4 = TXD (sortie du robot), 5 = BRC, 6 et 7 = GND.
+
+Les trous **ne sont pas alignés dans l'ordre 1 → 7** : leur position sur Dimitri a été **déduite** du schéma de la spec posé sur la photo, voir l'image ci-dessous et `hardware/WIRING.md`.
+
+<p align="center"><img src="hardware/brochage_port_dimitri.png" alt="Brochage déduit du port de Dimitri" width="55%"></p>
+
+- **Sûr** (symétrie des trous et position de l'encoche) : 1 et 2 = Vpwr, 6 = GND. Les mesures 6.2 et 6.3 doivent le confirmer.
+- **Incertain** : **3 et 4** (RXD/TXD) et **5 et 7** (BRC/GND) peuvent être inversés si le schéma de la spec est une vue de dessous.
+
+Pour trancher **sans risque** :
+- Le contact parmi 5/7 qui **bippe avec la masse** (6.2) est le GND (7) ; l'autre est BRC (5).
+- Pour 3/4 : à l'étape 8, câble-les dans un sens. Si « Flux robot actif » reste à `off`, **inverse-les**. Une inversion de TX et RX est sans danger : les deux côtés restent en basse tension.
 - En cas de doute, **ne branche pas** : redemande-moi avec une photo.
 
 ---
@@ -311,7 +347,9 @@ Le Mini360 (puce MP2307 selon Components101 ; d'autres sources parlent d'autres 
 ✅ Sortie = 5,0 V stable.
 
 ### 7.2 Schéma
-Voir `hardware/WIRING.md` (schéma ASCII). Résumé des liaisons :
+<p align="center"><img src="hardware/schema_electrique.svg" alt="Schéma électrique d'Aérobot" width="100%"></p>
+
+Le même schéma en texte et ses notes sont dans `hardware/WIRING.md`. Résumé des liaisons :
 | De | Vers | Remarque |
 |---|---|---|
 | Robot pin 1 (Vpwr) | Mini360 **IN+** | (via le fusible interne 200 mA) |
@@ -330,6 +368,8 @@ Voir `hardware/WIRING.md` (schéma ASCII). Résumé des liaisons :
 **Pourquoi ces GPIO ?** Le C3 a trois broches de démarrage sensibles (**GPIO2, 8, 9**) [S26][S17] : GPIO8 = LED de la carte, GPIO9 = bouton BOOT. On les évite pour les signaux.
 Le choix UART 6/7 et BRC 10 reprend ESPRoomba [S27] (tu peux le relire pour comparer).
 
+> ⚠ **Brochage du transistor :** face plate vers toi, un **BC547** est **C-B-E** et un **2N2222 en boîtier TO-92** est **E-B-C**. Vérifie la fiche de ton modèle et soude d'après les lettres E, B, C.
+
 **Pourquoi un transistor sur BRC ?** BRC est tirée au niveau haut côté robot ; on ne doit que la **tirer à zéro** [S28]. Le transistor évite d'imposer du 3,3 V ou de recevoir du 5 V sur le GPIO.
 
 ### 7.3 Contrôles AVANT de mettre sous tension (tu les fais même si tu es sûr)
@@ -344,6 +384,28 @@ Multimètre en **continuité, tout débranché** :
 2. Mesure la sortie : **5,0 V**. Mesure sur l'ESP : **3,3 V** entre 3V3 et GND.
 3. Branche l'USB à l'ESP **en plus** ? ⚠ **Non** : ne branche pas USB **et** 5 V Mini360 en même temps (⚠ pratique courante : la SuperMini a une protection selon les vendeurs, mais je n'ai pas de source) → utilise **l'un ou l'autre**.
 
+### 7.5 Implanter les composants sur la perfboard (pour le boîtier)
+Le boîtier attend une **perfboard de 50 × 40 mm**, vissée par ses 4 coins. Coupe-la à la bonne taille et perce 4 trous de **2,2 mm** à **2,5 mm des bords** (une vis M2×6 par coin). Garde libre un carré de **5 mm** autour de chaque trou.
+
+Le plan ci-dessous montre l'implantation et le câblage : **relie entre elles les pastilles qui portent le même numéro** (même couleur). La liste des pastilles de chaque réseau est à droite du plan.
+
+<p align="center"><img src="hardware/plan_perfboard.svg" alt="Plan de câblage de la perfboard 50 × 40 mm" width="100%"></p>
+
+Implantation prévue (coordonnées en mm depuis le coin de la plaque côté bouton CLEAN, côté USB) :
+
+| Composant | Position (x, y) | Taille | Remarque |
+|---|---|---|---|
+| ESP32-C3 SuperMini | 0,5 ; 6 | 22,5 × 18 | **USB-C au ras du bord x = 0**, face à la fente de la paroi du boîtier |
+| MPU6050 (GY-521) | 27 ; 6 | 21 × 16 | **à plat**, bien soudé ou vissé : la plaque doit rester rigide |
+| Mini360 | 6 ; 27 | 17 × 11 | sous les **fentes d'aération** du couvercle |
+| Condensateur (couché) | 27 ; 26 | Ø8 × 12 | au plus près de l'entrée 5 V de l'ESP |
+| Résistances R1 4,7-5,1 k, R2 10 k, R3 1 k | 42 → 49 ; y = 25,6 / 28,8 / 32 | couchées | une par ligne, de bas en haut R1, R2, R3 |
+| Transistor NPN Q1 | 39 → 44,5 ; 36 | TO-92 | ⚠ brochage selon le modèle (voir 7.2) |
+
+- Les **5 fils vers la fiche** partent de 5 pastilles au **bord y = 40** (côté du port dans le boîtier), dans l'ordre broche 1, 6, 4, 3, 5 de la fiche.
+- Hauteur maximale des composants au-dessus de la plaque : **9 mm** au centre, **7 mm** le long des parois (la lèvre du couvercle descend de 2 mm). L'ESP sur ses barrettes monte à environ 6,7 mm avec son USB-C, le condensateur couché à 8 mm : place-le au centre.
+- La LED et les boutons BOOT/RESET de l'ESP tombent sous de petits trous du couvercle (⚠ positions approximatives : vérifie sur ta carte et agrandis les trous si besoin).
+
 ---
 
 ## 8. Premier dialogue avec le Roomba (alimenté en USB)
@@ -355,7 +417,7 @@ Multimètre en **continuité, tout débranché** :
 - **GND** du port robot ↔ **GND** de l'ESP.
 - Robot TXD → diviseur → GPIO7 ; GPIO6 → Robot RXD ; GPIO10 → 1 kΩ → base NPN, collecteur → BRC, émetteur → GND.
 - **Pas de lien Vpwr** pour l'instant.
-- Batterie rebranchée dans le robot ; robot **encore ouvert** mais posé stable.
+- Batterie rebranchée dans le robot ; bague argentée retirée, robot posé stable. Le boîtier n'est **pas encore** monté : on teste à l'air libre.
 
 ### 8.2 Allumer et regarder les logs
 ```powershell
@@ -419,36 +481,66 @@ Le port fournit Vpwr via un **fusible PTC de 200 mA** [S1 p.3] ; **ne dépasse p
 
 ## 10. Imprimer le boîtier en 3D
 
-> Le boîtier se pose **sur le dessus** du robot et coiffe le port série : la fiche mini-DIN coudée descend dans le port par un trou du fond. Le 696 fait environ **Ø335 × 93 mm** (fiches vendeurs : Icecat, Epey) ; avec le boîtier, il monte à **≈ 109 mm**. Vérifie qu'il passe encore sous tes meubles. Aperçu : `docs/apercu-boitier.png`.
+> Le boîtier se pose **sur le dessus** du robot et coiffe le port série : la fiche mini-DIN coudée descend dans le port par un trou du fond. Le 696 fait environ **Ø335 × 93 mm** [S43] ; avec le boîtier, il monte à **≈ 109 mm**. Vérifie qu'il passe encore sous tes meubles. Aperçu : `docs/apercu-boitier.png`.
 
 ### 10.1 Mesurer et caler avec le gabarit
-1. Ouvre `hardware/enclosure.scad` dans OpenSCAD. Les valeurs à vérifier sont en haut : `port_r` (distance centre du robot → port, 134 mm estimé sur photo), `port_a` (angle depuis la tourelle, 39° vers la gauche), `feet_in_h` et `feet_out_h` (hauteur des pieds sur le capot central et dans la piste du port, ⚠ estimées).
-2. `part = "mock"` → **F6** → **Fichier → Exporter → Exporter en STL** [S18b]. Imprime ce **cadre plat de 1,2 mm**.
-3. Pose-le sur Dimitri : l'**anneau** doit entourer le port. Sinon, corrige `port_r` / `port_a` et réimprime.
-4. Mesure au pied à coulisse le dénivelé entre le capot central brillant, l'anneau gris et la piste du port, puis ajuste `feet_in_h` et `feet_out_h` (le fond doit passer au-dessus de l'anneau gris sans le toucher).
+1. Imprime **`hardware/stl/mock.stl`** : un **cadre plat de 1,2 mm** (environ 10 minutes, ⚠ ordre de grandeur).
+2. Pose-le sur Dimitri, bague argentée retirée : l'**anneau** doit entourer le port, le bord intérieur arrondi côté bouton CLEAN.
+3. Mesure au pied à coulisse le **dénivelé** entre le capot central brillant, l'anneau gris et la piste du port.
+4. Si l'anneau tombe à côté ou si les hauteurs diffèrent, ouvre `hardware/enclosure.scad` dans OpenSCAD et corrige en haut du fichier :
+
+| Paramètre | Rôle | Valeur actuelle |
+|---|---|---|
+| `port_r` | distance centre du robot → centre du port | 134 mm (estimé sur photo) |
+| `port_a` | angle du port depuis l'avant (tourelle), vers la gauche | 39° (estimé sur photo) |
+| `feet_in_h` | hauteur des cales posées sur le capot central | 2 mm (⚠ estimé) |
+| `feet_out_h` | hauteur des cales posées dans la piste du port | 5,2 mm (⚠ estimé) |
+
+Le fond du boîtier doit passer **au-dessus de l'anneau gris sans le toucher**. Puis réexporte le gabarit (`part = "mock"` → **F6** → **Fichier → Exporter → Exporter en STL** [S18b]) et recommence jusqu'à ce qu'il tombe juste.
 
 ### 10.2 Fiche et fixation
-- Fiche : une **mini-DIN coudée** (ou un câble sacrifié). Sa partie métallique descend dans le port ; le corps reste dans le boîtier (⚠ vérifie que le corps fait moins de 10 mm de haut).
-- Fixation : 4 pastilles d'**adhésif double face épais** (type VHB) sous les pieds. Le boîtier reste démontable en tirant doucement.
+- Fiche : une **mini-DIN coudée** (ou un câble sacrifié). Sa partie métallique descend dans le port par le **trou de Ø20 mm du fond** ; le corps reste dans le boîtier. ⚠ Vérifie que le corps fait **moins de 10 mm de haut** et que la fiche **rentre dans le logement du port** (sur un 690, le trou était trop étroit pour une fiche complète [S12]).
+- Fixation : 4 pastilles d'**adhésif double face épais** (type VHB) sous les cales. Le boîtier reste démontable en tirant doucement.
 
 ### 10.3 Boîtier
 1. Les STL sont déjà prêts dans `hardware/stl/` (`box`, `lid`, `feet`, `mock`), orientés pour l'impression. Si tu as changé une cote : `part = "box"` → F6 → exporter le STL, puis idem pour `lid` et `feet`. Le boîtier s'imprime **fond sur le plateau**, le couvercle **face gravée sur le plateau** (le STL est déjà retourné), sans supports.
 2. Colle les **4 cales** (`feet`) sous le boîtier, dans les cercles gravés du fond : les 2 basses (2 mm) côté bouton CLEAN, les 2 hautes (5,2 mm) côté port.
-3. Slicer (PrusaSlicer : importer → choisir imprimante/filament → **hauteur de couche 0,15-0,2 mm**, **remplissage ~15 %**, **supports si surplombs**, **« Slice now »** → exporter le G-code [S18]).
+3. Slicer (PrusaSlicer : importer → choisir imprimante/filament → **hauteur de couche 0,15-0,2 mm**, **remplissage ~15 %**, **aucun support nécessaire**, **« Slice now »** → exporter le G-code [S18]).
+
+| Pièce | Fichier | Orientation | Dimensions | Volume plein |
+|---|---|---|---|---|
+| Gabarit | `mock.stl` | à plat | 56 × 96 × 1,2 mm | 1,2 cm³ |
+| Boîtier | `box.stl` | fond sur le plateau | 56 × 93 × 18 mm | 20 cm³ |
+| Couvercle | `lid.stl` | face gravée sur le plateau (déjà retourné) | 56 × 93 × 4 mm | 10 cm³ |
+| Cales | `feet.stl` | à plat | 4 × Ø10 mm, 2 et 5,2 mm | 1,1 cm³ |
+
+Les quatre pièces compilent sans avertissement et sont étanches (« manifold »), vérifié avec OpenSCAD 2021.01. Avec 15 % de remplissage, le tout fait bien moins de 40 g de PLA.
 4. Si OpenSCAD affiche `not a valid 2-manifold` : des faces coïncident ; fais dépasser légèrement les formes soustraites [S18b].
 5. Matériau : **PLA** suffit hors chaleur ; **PETG** si tu veux plus de tenue (⚠ recommandation générale, non sourcée).
 
 ---
 
-## 11. Installation définitive et refermeture
+## 11. Installation définitive sur le robot
 
-1. **Soude** le montage sur la perfboard (ou fais les contrôles de l'étape 7.3 sur la version finale).
-2. Fixe le **MPU6050 à plat, rigide** (double-face ou vis), **axe Z vertical**, **loin du moteur de brosse** (vibrations ; le moteur de brosse perturbe aussi les magnétomètres [S30], on n'utilise que le gyro).
-3. Passe la fiche par le trou du fond, serre les fils entre les deux plots avec un collier, branche la fiche dans le port, puis colle le boîtier. Rien ne passe sous le capot.
-4. **Rebranche** : mini-DIN (ou fils soudés), refais **la mesure de courant** de l'étape 9.
-5. **Avant de refermer**, fais **tous les tests** de l'étape 8 (commandes, capteurs, cap) **ouvert**.
-6. Referme en suivant **l'ordre inverse** (photos). Remets les **vis à leur place** (types différents).
-7. **Désactive les plannings de l'app iRobot** pour éviter un double démarrage (⚠ conseil de bon sens, non sourcé).
+1. **Soude** le montage sur la perfboard en suivant l'implantation 7.5, puis refais les contrôles de l'étape 7.3 sur la version finale.
+2. Le **MPU6050** doit être **à plat et rigide**, **axe Z vertical**. Dans le boîtier, il est loin du moteur de brosse principale (vibrations ; ce moteur perturbe aussi les magnétomètres [S30], on n'utilise que le gyro).
+3. **Visse la perfboard** sur ses 4 plots (M2×6), USB-C face à la fente de la paroi.
+4. **Colle les 4 cales** dans les cercles gravés sous le fond : les 2 basses côté bouton CLEAN, les 2 hautes côté port (étape 10.3).
+5. Passe la **fiche** par le trou du fond et serre les fils entre les deux plots avec un **collier**, sans les tendre.
+6. **Avant de coller**, branche la fiche dans le port et fais **tous les tests** de l'étape 8 (commandes, capteurs, cap) puis **la mesure de courant** de l'étape 9, couvercle ouvert.
+7. **Dégraisse** le dessus du robot sous les cales (alcool isopropylique, ⚠ conseil général non sourcé), pose l'**adhésif** sous les cales, puis presse le boîtier fermement pendant une trentaine de secondes, fiche bien enfoncée.
+8. **Ferme le couvercle** avec 4 vis M2×10, sans forcer (vis auto-taraudeuses dans le plastique).
+9. Si tu as ouvert la trappe de batterie ou le capot, referme-les dans **l'ordre inverse** (photos) et remets les **vis à leur place** (types différents).
+10. La **bague argentée** ne se remet probablement pas : le boîtier occupe sa place au-dessus du port (⚠ non vérifié ; garde-la de côté).
+11. **Désactive les plannings de l'app iRobot** pour éviter un double démarrage (⚠ conseil de bon sens, non sourcé).
+
+**Derniers tests, boîtier monté :**
+- [ ] Le robot **passe sous tes meubles bas** (hauteur totale ≈ 109 mm au lieu de 93).
+- [ ] Le **pare-chocs** recule librement sans toucher le boîtier.
+- [ ] Le robot **retrouve sa base** depuis plusieurs coins de la pièce : le boîtier ne doit pas masquer la tourelle infrarouge.
+- [ ] Le câble USB-C se branche par la fente pour flasher (les mises à jour suivantes passent en Wi-Fi, OTA).
+
+✅ Coche les étapes « Imprimer le gabarit puis le boîtier, monter l'électronique » dans la feuille de route du README.
 
 ---
 
@@ -519,7 +611,7 @@ Bouton **Aerobot : réinitialiser la carte** (input_button du package).
 ### 13.6 Ce que la carte sait faire (et ne sait pas)
 - **Fait** : zone parcourue, points de contact des pare-chocs (murs/meubles), position/orientation du robot, base, rectangle estimé de la pièce.
 - **Recalages automatiques** : retour sur la base = position remise à zéro ; contact frontal complet contre un mur → cap recalé sur 0/90/180/270° ; murs touchés ≥ 2 fois servent de référence.
-- **Ne fait pas** : carte de précision (lidar). En **simulation** (pièce 5×4,5 m), les murs sont estimés à ±25-40 cm près ; sur le vrai robot, **à mesurer**.
+- **Ne fait pas** : carte de précision (lidar). En **simulation** (pièce 5 × 4,5 m, 15 min, `python simulate.py 900`), les murs sont placés entre **6 et 43 cm** de leur vraie place selon le côté ; sur le vrai robot, **à mesurer**.
 
 ---
 
@@ -599,12 +691,17 @@ La spec : **508,8 comptes par tour de roue**, roue 72 mm → ~0,4445 mm/compte [
 | Carte déformée | cap/distance non calibrés | étape 15 |
 | Manette sans effet | nom d'action différent | Outils dév → Actions |
 | Robot reste en Safe | oubli de quitter le mode manuel | bouton « Quitter » ; 30 s d'inactivité → Passive |
+| Le gabarit ne tombe pas sur le port | position estimée sur photo | corrige `port_r` / `port_a` (étape 10.1) |
+| La fiche ne rentre pas dans le port | logement trop étroit | autre fiche plus fine, ou option C (étape 5.6) |
+| Le boîtier se décolle | surface grasse, adhésif trop fin | dégraisser, adhésif plus épais, vérifier la hauteur des cales |
+| Le robot ne retrouve plus sa base | tourelle IR masquée par le boîtier | tester sans le boîtier pour confirmer, puis me le dire : on le déplace ou on le rabaisse |
+| Le robot reste coincé sous un meuble | hauteur ≈ 109 mm avec le boîtier | barrière virtuelle, ou version plus plate du boîtier |
 
 ---
 
 ## 18. Ce qui n'est PAS vérifié
 
-- Démontage **exact du 696** (vis, clips, cache du port) : extrapolé du 692/690/614 [S6][S11][S12].
+- Démontage **exact du 696** (vis, clips du capot) : extrapolé du 692/690/614 [S6][S11][S12]. L'**accès au port** (bague argentée) est, lui, constaté sur les photos de Dimitri.
 - **Numérotation des broches vue de face** (à vérifier au multimètre, étape 6).
 - **Tension réelle de Vpwr du 696** (~16-17 V sur un 632 [S9]).
 - **Niveau logique réel de TX** (spec : 5 V [S1 p.3] ; un dépôt dit 3,3 V sur un 616, **non vérifié** [S40]) : **mesure-le**.
@@ -613,7 +710,9 @@ La spec : **508,8 comptes par tour de roue**, roue 72 mm → ~0,4445 mm/compte [
 - **Efficacité du maintien d'éveil** sur la base pour un firmware ancien.
 - **Compilation** du firmware, **syntaxe `template: - vacuum:`** selon ta version de HA, **dossier des apps AppDaemon**, **installation de Pillow** sur AppDaemon, compatibilité **Python 3.14** avec ESPHome.
 - **Précision de la carte** sur le vrai robot (seule une simulation a été faite).
-- **Position exacte du port et hauteurs du dessus** du robot (pour caler le boîtier : gabarit `part = "mock"`).
+- **Position exacte du port et hauteurs du dessus** du robot (pour caler le boîtier : gabarit `mock.stl`).
+- **Boîtier** : jamais imprimé ; tenue de l'adhésif sur le capot brillant, passage de la fiche dans le logement du port, effet sur la tourelle infrarouge et retour à la base, possibilité de remettre la bague argentée.
+- **Positions de la LED et des boutons BOOT/RESET** de l'ESP sous le couvercle (approximatives).
 - Prix : estimations / relevés partiels.
 
 ---
@@ -677,3 +776,11 @@ Niveau : **H** = lu sur page officielle ou PDF constructeur ; **M** = lu mais pa
 - **[S18]** PrusaSlicer : https://help.prusa3d.com/article/first-print-with-prusaslicer_1753 — **H**
 - **[S18b]** OpenSCAD → STL : https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/STL_Import_and_Export — **H**
 - **[S39]** Dérive d'odométrie (Create 2, anecdote) : https://answers.ros.org/question/263186/acceptable-of-odometry-error-of-autonomy_create/ — **B**
+
+### Port et boîtier (ajoutés le 18/11/2026)
+- **[S41]** *iRobot Roomba 500 Open Interface Spec* (port « sur le dessus, sous le cache décoratif ») : https://cps-vo.org/sites/cps-vo.org/files/cpsvo_file_nodes/iRobot_Roomba_500_Open_Interface_Specpdf.pdf — **M** (lu via un résumé de recherche)
+- **[S42]** Forum Synthiam, Roomba 595 (port caché sous la bague décorative) : https://synthiam.com/Community/Questions/Roomba-595-Interface-Port-Where-9085 — **B**
+- **[S43]** Dimensions du Roomba 696 (Ø33,5 × 9,3 cm) : https://icecat.co.uk/amp/p/vendorName/mpn/desc-37418826.html et https://www.epey.co.uk/robot-vacuum/irobot-roomba-696.html — **M** (fiches vendeurs)
+- **[S44]** ESP32-C3 SuperMini (22,5 × 18 mm) : https://components101.com/node/3188 — **M**
+- **[S45]** GY-521 / MPU6050 (≈ 21 × 16 mm) : https://openelab.io/products/mpu6050-gy521-six-axis-sensor — **M**
+- Position du port sur Dimitri : photos `docs/photos/port-serie-position.jpg` et `tourelle-ir-fils.jpg` du dépôt — **H** (constat direct)
